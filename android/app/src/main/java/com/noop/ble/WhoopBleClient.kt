@@ -3007,6 +3007,8 @@ class WhoopBleClient(
     // #520 DIS identity — read ONCE per connection, post-handshake, 5/MG only. Serial and hardware
     // revision are immutable, so they are never re-polled (unlike the battery). Reset on disconnect.
     private var disRead = false
+    /** #1303: the strap's DIS serial, once read (5.0/MG only — a 4.0 does not expose one). */
+    var onSerial: ((String) -> Unit)? = null
     private var disSerial: String? = null
     private var disHwRev: String? = null
     /** DIS 0x2A24, the strap's own model number — the authoritative variant signal (#520). */
@@ -4675,6 +4677,10 @@ class WhoopBleClient(
         val prefix = disSerial?.trim()?.uppercase()?.take(3) ?: "?"
         log("DIS: serialPrefix=$prefix hwRev=${disHwRev ?: "?"} -> variant=${variant.label}")
         reconcileModelFromAttestation(variant)
+        // #1303: hand the strap's OWN serial up so the coordinator can re-point this pairing onto a stable
+        // `whoop-<serial>` id. Emitted, not acted on here, mirroring how the Oura source reports its serial:
+        // adoption re-points the ACTIVE device and tears down the very connection this callback runs inside.
+        disSerial?.let { onSerial?.invoke(it) }
     }
 
     /** The strap's own DIS attestation is ground truth (a WHOOP 4.0 never attests a 5AM/5AG serial). When
@@ -9683,6 +9689,13 @@ class WhoopBleClient(
             if (unknown != "none") log("Capture: UNKNOWN type samples — $unknown")
         }
     }
+
+    /**
+     * #1303: let the identity owner write one line into the SAME strap log the connection uses, so an
+     * adoption is visible in the capture beside the DIS line that triggered it. Deliberately narrow —
+     * the general [log] stays private. Callers must pass a serial PREFIX, never a full serial.
+     */
+    fun logIdentity(line: String) = log(line)
 
     private fun log(s: String, domain: com.noop.testcentre.TestDomain? = null) {
         // A diagnostic log line must NEVER be able to crash the app. log() runs on the GATT binder
