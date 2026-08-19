@@ -38,6 +38,20 @@ public enum WhoopSerialIdentity {
         return "\(idPrefix)-\(up)"
     }
 
+    /// Whether this pairing's id may be re-pointed onto a serial id at all.
+    ///
+    /// ONLY a provisional `whoop-<CB-UUID>` id qualifies. The legacy `my-whoop` seed is deliberately
+    /// EXCLUDED, and that exclusion is what makes this safe to ship before #1304: every existing
+    /// single-WHOOP install is still on that seed, ~47 code paths still read the literal `"my-whoop"`
+    /// directly, and `WhoopBleClient.deviceId` documents that the single-WHOOP path never reassigns it.
+    /// Adopting it would migrate the whole history onto `whoop-<serial>` while new samples kept being
+    /// written under `my-whoop` — a split history that reads as data loss.
+    ///
+    /// The legacy seed joins this path as part of #1304, once the literals no longer assume it.
+    public static func mayAdopt(currentId: String) -> Bool {
+        currentId.hasPrefix("\(idPrefix)-")
+    }
+
     /// True when `id` is already the serial id for `serial` — the steady state on every reconnect after the
     /// first adoption, and the cheap early-out that keeps re-adoption from doing database work per connect.
     public static func isAlreadyAdopted(id: String, serial: String?) -> Bool {

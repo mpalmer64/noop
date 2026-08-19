@@ -857,6 +857,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // truncated, non-serial prose) leaves the strap on its existing id — adopting onto a junk id
                 // would migrate every device-scoped row onto a garbage key, worse than not adopting at all.
                 if (serialId != null && currentId != null && currentId != serialId &&
+                    com.noop.data.WhoopSerialIdentity.mayAdopt(currentId) &&
                     deviceRegistry.adoptSerialIdentity(currentId, serialId)
                 ) {
                     // Prefix only. `serialId` embeds the full serial, which must never reach a shared log.

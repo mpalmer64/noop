@@ -44,6 +44,20 @@ final class WhoopSerialIdentityTests: XCTestCase {
         XCTAssertFalse(WhoopSerialIdentity.isAlreadyAdopted(id: "whoop-5AG12345678", serial: "  "))
     }
 
+    /// The guard that makes this safe to ship before #1304. Every existing single-WHOOP install is on the
+    /// legacy `my-whoop` seed, ~47 code paths read that literal directly, and `WhoopBleClient` never
+    /// reassigns its deviceId on the single-WHOOP path — so adopting it would migrate the history onto
+    /// `whoop-<serial>` while new samples kept landing under `my-whoop`. A split history reads as data loss.
+    func testRefusesToAdoptTheLegacySingleWhoopSeed() {
+        XCTAssertFalse(WhoopSerialIdentity.mayAdopt(currentId: "my-whoop"))
+        // A provisional pairing id IS adoptable — that is the multi-strap case this ships for.
+        XCTAssertTrue(WhoopSerialIdentity.mayAdopt(currentId: "whoop-6B9F2C11-0000-4000-8000-0000000000AA"))
+        // An already-adopted serial id stays adoptable; the equality check upstream stops the re-migration.
+        XCTAssertTrue(WhoopSerialIdentity.mayAdopt(currentId: "whoop-5AG12345678"))
+        // Another brand's id is never touched by the WHOOP path.
+        XCTAssertFalse(WhoopSerialIdentity.mayAdopt(currentId: "oura-2H3B2405003655"))
+    }
+
     func testLogSafeNeverLeaksTheFullSerial() {
         XCTAssertEqual(WhoopSerialIdentity.logSafe(serial: "5AG12345678"), "5AG…")
         XCTAssertEqual(WhoopSerialIdentity.logSafe(serial: nil), "?")

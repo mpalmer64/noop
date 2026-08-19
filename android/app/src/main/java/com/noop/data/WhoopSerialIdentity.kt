@@ -48,6 +48,20 @@ object WhoopSerialIdentity {
     }
 
     /**
+     * Whether this pairing's id may be re-pointed onto a serial id at all.
+     *
+     * ONLY a provisional `whoop-<address>` id qualifies. The legacy `my-whoop` seed is deliberately
+     * EXCLUDED, and that exclusion is what makes this safe to ship before #1304: every existing
+     * single-WHOOP install is still on that seed, ~47 code paths still read the literal "my-whoop"
+     * directly, and [com.noop.ble.WhoopBleClient] documents that the single-WHOOP path never reassigns its
+     * deviceId. Adopting it would migrate the whole history onto `whoop-<serial>` while new samples kept
+     * being written under "my-whoop" - a split history that reads as data loss.
+     *
+     * The legacy seed joins this path as part of #1304, once the literals no longer assume it.
+     */
+    fun mayAdopt(currentId: String): Boolean = currentId.startsWith("$ID_PREFIX-")
+
+    /**
      * True when [id] is already the serial id for [serial] — the steady state on every reconnect after the
      * first adoption, and the cheap early-out that keeps re-adoption from doing database work per connect.
      */

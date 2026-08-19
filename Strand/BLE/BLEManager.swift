@@ -4589,6 +4589,7 @@ public final class BLEManager: NSObject, ObservableObject {
         guard let rs = registryStore,
               let serialId = WhoopSerialIdentity.adoptedId(serial: disSerial),
               let active = try? rs.all().first(where: { $0.status == .active }),
+              WhoopSerialIdentity.mayAdopt(currentId: active.id),
               active.id != serialId
         else { return }
         let currentId = active.id

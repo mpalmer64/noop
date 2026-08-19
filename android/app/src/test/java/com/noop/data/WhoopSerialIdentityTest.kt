@@ -53,6 +53,22 @@ class WhoopSerialIdentityTest {
         assertFalse(WhoopSerialIdentity.isAlreadyAdopted("whoop-5AG12345678", "  "))
     }
 
+    /**
+     * The guard that makes this safe to ship before #1304. Every existing single-WHOOP install is on the
+     * legacy "my-whoop" seed, ~47 code paths read that literal directly, and WhoopBleClient never
+     * reassigns its deviceId on the single-WHOOP path — so adopting it would migrate the history onto
+     * whoop-<serial> while new samples kept landing under "my-whoop". A split history reads as data loss.
+     */
+    @Test fun refusesToAdoptTheLegacySingleWhoopSeed() {
+        assertFalse(WhoopSerialIdentity.mayAdopt("my-whoop"))
+        // A provisional pairing id IS adoptable — that is the multi-strap case this ships for.
+        assertTrue(WhoopSerialIdentity.mayAdopt("whoop-6B9F2C11-0000-4000-8000-0000000000AA"))
+        // An already-adopted serial id stays adoptable; the equality check upstream stops the re-migration.
+        assertTrue(WhoopSerialIdentity.mayAdopt("whoop-5AG12345678"))
+        // Another brand's id is never touched by the WHOOP path.
+        assertFalse(WhoopSerialIdentity.mayAdopt("oura-2H3B2405003655"))
+    }
+
     @Test fun logSafeNeverLeaksTheFullSerial() {
         assertEquals("5AG…", WhoopSerialIdentity.logSafe("5AG12345678"))
         assertEquals("?", WhoopSerialIdentity.logSafe(null))
