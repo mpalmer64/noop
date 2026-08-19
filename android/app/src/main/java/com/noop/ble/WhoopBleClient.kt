@@ -3007,7 +3007,16 @@ class WhoopBleClient(
     // #520 DIS identity — read ONCE per connection, post-handshake, 5/MG only. Serial and hardware
     // revision are immutable, so they are never re-polled (unlike the battery). Reset on disconnect.
     private var disRead = false
-    /** #1303: the strap's DIS serial, once read (5.0/MG only — a 4.0 does not expose one). */
+    /**
+     * #1303: the strap's DIS serial, once read (5.0/MG only — a 4.0 does not expose one).
+     *
+     * KNOWN ASYMMETRY with the Swift twin, which adopts inline in BLEManager and uses its closure only
+     * to notify. Here the adoption itself lives in the observer (AppViewModel owns the registry handle
+     * and a scope; SourceCoordinator is inert on the WHOOP path by design), so a connect that completes
+     * before any observer is wired emits into a null callback and does not adopt. It is deferred, not
+     * lost: DIS is read on every connect, so the next one with an observer alive adopts. Worth knowing
+     * when reading a capture where iOS shows the adoption line and Android does not.
+     */
     var onSerial: ((String) -> Unit)? = null
     private var disSerial: String? = null
     private var disHwRev: String? = null
