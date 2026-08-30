@@ -9966,6 +9966,25 @@ private val PII_MAC_RE = Regex("([0-9A-Fa-f]{2}):[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[
 private val PII_WHOOP_SERIAL_RE = Regex("WHOOP (\\d[0-9A-Za-z]{5,})")
 
 /**
+ * #1303: a device id that has ADOPTED its strap serial (`whoop-<SERIAL>`) is a device identifier in every
+ * line that prints an id — the Devices list, each `dayOwner`, the per-source counts. Neither existing rule
+ * catches it: [PII_MAC_RE] wants MAC shape, and [PII_WHOOP_SERIAL_RE] wants the literal word "WHOOP "
+ * followed by a DIGIT, while an adopted id is `whoop-` + a serial that commonly starts with a letter.
+ * Before adoption existed no device id could contain a serial, so this was not a gap; it is one now.
+ *
+ * Keeps the leading three characters, the same rule `WhoopSerialIdentity.logSafe` already applies to the
+ * adoption line, so two straps stay distinguishable in a log. The `-noop` computed-sibling suffix is
+ * PRESERVED: it is not identifying, and it is what lets a reader tell derived rows from measured ones —
+ * the distinction the "Days:"/"Stored:" lines are read for.
+ *
+ * The six-character minimum is not arbitrary: it matches `WhoopSerialIdentity.minSerialLength`, so
+ * anything short enough to be refused as a serial is also too short to be mistaken for one here. That
+ * also leaves `my-whoop`, `my-whoop-noop` and the MAC form (already masked to `whoop-FD:••…`) untouched.
+ */
+private val PII_ADOPTED_ID_NOOP_RE = Regex("whoop-([A-Za-z0-9]{3})[A-Za-z0-9-]{3,}(-noop)")
+private val PII_ADOPTED_ID_RE = Regex("whoop-([A-Za-z0-9]{3})[A-Za-z0-9-]{3,}")
+
+/**
  * Builds the 9-byte WHOOP 4.0 SET_ALARM_TIME (cmd 66) payload.
  * Layout: `[0x01] + u32 LE epoch + [0x00, 0x00]` subseconds + `[0x00, 0x00]` haptic-mode field.
  *
@@ -10110,6 +10129,10 @@ internal fun alarmReadbackLocalTime(epochSec: Long): String =
 internal fun redactStrapLogPii(s: String): String = try {
     s.replace(PII_MAC_RE, "$1:••:••:••:••:$2")
         .replace(PII_WHOOP_SERIAL_RE, "WHOOP <serial>")
+        // MAC first, deliberately: `whoop-<MAC>` is already `whoop-FD:••…` by now and cannot be mistaken
+        // for an adopted id. The -noop form runs before the general one so the sibling suffix survives.
+        .replace(PII_ADOPTED_ID_NOOP_RE, "whoop-$1…$2")
+        .replace(PII_ADOPTED_ID_RE, "whoop-$1…")
 } catch (t: Throwable) {
     "[redaction error - line withheld]"
 }
