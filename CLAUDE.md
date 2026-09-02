@@ -241,3 +241,27 @@ Swift, you MUST build the app yourself: `xcodebuild … build` locally, or run `
 
 When in doubt, open an issue to coordinate first, and prefer the smallest change that's correct and
 covered by a test that runs without a strap.
+
+---
+
+## Fork-local rules (branch `max`, not for upstream)
+
+This checkout is a personal fork signed under team `7CT25G8V8T`, bundle prefix `com.maxpalmer`
+(set in gitignored `Config/BundleIdSecrets.xcconfig`). `main` mirrors upstream and is never
+committed to; all fork work lives on `max` and is rebased onto `main` after each upstream merge.
+
+NEVER MODIFY (upstream-owned; changes here fight every future merge and can corrupt data silently):
+- `Packages/WhoopProtocol/` — BLE decode. Breaking this corrupts data silently.
+- `Packages/WhoopStore/` — GRDB migrations. Schema changes fight every upstream merge.
+- `Packages/StrandAnalytics/` — Recovery/strain/HRV/sleep math. Wrong numbers still LOOK right.
+- `Packages/StrandImport/` — CSV + Apple Health parsers.
+
+FREE TO REWRITE:
+- `Packages/StrandDesign/` — palette, typography, motion, components (RecoveryRing, StrainGauge,
+  Hypnogram, Sparkline, TrendChart, YearHeatStrip, StrandCard, StatePill). No external UI deps.
+- `StrandiOS/` — iOS screens.
+- `StrandiOSShared/` — shared iOS view code.
+- `StrandiOSWidgets/` — home + lock screen widgets.
+
+If a UI change seems to need a package edit, stop and find a way to do it in the UI layer.
+Keep `LICENSE`, `NOTICE`, `DISCLAIMER.md`, `ATTRIBUTION.md` intact. Never distribute commercially.
