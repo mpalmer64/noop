@@ -93,17 +93,12 @@ fun SmartAlarmScreen(vm: AppViewModel) {
             val nextTargetMinutes = remember(
                 targetMinutes, windowMinutes, phoneAlarmWeekdays, phoneAlarmDayOverrides,
             ) {
-                com.noop.alarm.SmartAlarmScheduler.nextDeadline(
+                com.noop.alarm.SmartAlarmScheduler.nextWindowStartMinutes(
                     now = java.util.Calendar.getInstance(),
                     weekdays = phoneAlarmWeekdays,
                     windowMinutes = windowMinutes,
+                    defaultTarget = targetMinutes,
                 ) { phoneAlarmDayOverrides[it] ?: targetMinutes }
-                    ?.let { cal ->
-                        val deadlineMin = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 +
-                            cal.get(java.util.Calendar.MINUTE)
-                        (deadlineMin - windowMinutes + 24 * 60) % (24 * 60)
-                    }
-                    ?: targetMinutes
             }
             WindowCard(enabled = enabled, targetMinutes = nextTargetMinutes, windowMinutes = windowMinutes)
         }

@@ -2558,6 +2558,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         phoneAlarmStore.targetOverrides = next
         _phoneAlarmDayOverrides.value = phoneAlarmStore.targetOverrides
         if (phoneAlarmStore.enabled) SmartAlarmScheduler.arm(appContext, phoneAlarmStore)
+        // The strap-buzz companion derives its buzz time FROM the phone alarm, so an override that moves a
+        // wake time has to move the buzz with it. `setPhoneAlarmWeekdays` already reconciles for exactly
+        // this reason; omitting it here would leave the strap armed for the old time until some unrelated
+        // edit happened to reconcile — a strap buzzing at the wrong hour being worse than one not buzzing.
+        reconcileStrapAlarm()
     }
 
     /** Set the days the phone alarm fires on. EMPTY = every day (see [SmartAlarmStore.weekdays]).

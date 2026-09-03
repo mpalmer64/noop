@@ -143,6 +143,32 @@ object SmartAlarmScheduler {
     }
 
     /**
+     * The EARLIEST-wake minute of the next scheduled window (#1858) — what the guarantee card names.
+     *
+     * The card promises a specific time ("a backup alarm is set for 04:45"), so once wake times vary by
+     * day it has to show the next one rather than the default; on a moved day the default is simply the
+     * wrong number. DERIVED from [nextDeadline] rather than recomputed, so the card and the alarm cannot
+     * disagree — two independent time computations drifting apart is the failure this change already had
+     * to fix in two other places.
+     *
+     * Falls back to [defaultTarget] when no day is reachable, so the card degrades to the previous
+     * behaviour rather than blanking. Pure but for the clock, so it is testable without Compose.
+     */
+    internal fun nextWindowStartMinutes(
+        now: Calendar,
+        weekdays: Set<Int>,
+        windowMinutes: Int,
+        defaultTarget: Int,
+        targetForDay: (Int) -> Int,
+    ): Int {
+        val deadline = nextDeadline(now, weekdays, windowMinutes, afterFire = false, targetForDay)
+            ?: return defaultTarget
+        val deadlineMin = deadline.get(Calendar.HOUR_OF_DAY) * 60 + deadline.get(Calendar.MINUTE)
+        return (deadlineMin - windowMinutes + SmartAlarmStore.MINUTES_PER_DAY) %
+            SmartAlarmStore.MINUTES_PER_DAY
+    }
+
+    /**
      * The next hard-deadline instant, honouring PER-DAY wake times (#1858).
      *
      * Replaces the old "find the next occurrence of one minute-of-day, then roll to an enabled day":

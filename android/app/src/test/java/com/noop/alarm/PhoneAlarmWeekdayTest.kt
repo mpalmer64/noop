@@ -167,4 +167,48 @@ class PhoneAlarmWeekdayTest {
     @Test fun anUnreachableSetYieldsNothingInsteadOfSpinning() {
         assertNull(deadline(mondayAt(), weekdays = setOf(99)))
     }
+
+    // MARK: what the guarantee card shows
+
+    /**
+     * The card names a specific time, so it must name the NEXT one. Derived from the same
+     * [SmartAlarmScheduler.nextDeadline] the alarm uses, so the promise on screen and the alarm that
+     * actually fires cannot drift apart — two independent time computations going stale is the failure
+     * this change had to fix in the Buzz-WHOOP companion as well.
+     */
+    @Test fun theCardShowsTheNextWindowNotTheDefault() {
+        val start = SmartAlarmScheduler.nextWindowStartMinutes(
+            now = mondayAt(),
+            weekdays = setOf(Calendar.TUESDAY),
+            windowMinutes = 30,
+            defaultTarget = 4 * 60 + 15,
+        ) { mapOf(Calendar.TUESDAY to 3 * 60)[it] ?: (4 * 60 + 15) }
+        assertEquals(3 * 60, start)   // Tuesday's own 03:00, not the 04:15 default
+    }
+
+    /** With no overrides it is the default, so the card is unchanged for every existing install. */
+    @Test fun theCardKeepsTheDefaultWhenNothingIsOverridden() {
+        val start = SmartAlarmScheduler.nextWindowStartMinutes(
+            now = mondayAt(), weekdays = emptySet(), windowMinutes = 30, defaultTarget = 6 * 60 + 30,
+        ) { 6 * 60 + 30 }
+        assertEquals(6 * 60 + 30, start)
+    }
+
+    /** A window opening the previous evening still reports its own start, not a negative minute. */
+    @Test fun theCardHandlesAWindowThatOpensBeforeMidnight() {
+        val start = SmartAlarmScheduler.nextWindowStartMinutes(
+            now = mondayAt(), weekdays = setOf(Calendar.MONDAY), windowMinutes = 30,
+            defaultTarget = 23 * 60 + 50,
+        ) { 23 * 60 + 50 }
+        assertEquals(23 * 60 + 50, start)
+    }
+
+    /** Nothing schedulable degrades to the default rather than blanking the promise. */
+    @Test fun theCardFallsBackWhenNoDayIsReachable() {
+        val start = SmartAlarmScheduler.nextWindowStartMinutes(
+            now = mondayAt(), weekdays = setOf(99), windowMinutes = 30, defaultTarget = 5 * 60,
+        ) { 5 * 60 }
+        assertEquals(5 * 60, start)
+    }
+
 }
