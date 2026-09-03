@@ -2538,7 +2538,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         _phoneAlarmTargetMinutes.value = phoneAlarmStore.targetMinutes
         if (phoneAlarmStore.enabled) SmartAlarmScheduler.arm(appContext, phoneAlarmStore)
         // The wind-down nudge is derived from the wake time, so keep it in step.
-        if (windDownStore.enabled) WindDownScheduler.schedule(appContext, windDownStore, phoneAlarmStore.targetMinutes)
+        if (windDownStore.enabled) WindDownScheduler.schedule(
+            appContext, windDownStore, phoneAlarmStore.targetMinutes, phoneAlarmStore.targetOverrides,
+        )
         // #536: re-arm the strap at the new earliest time when "Buzz WHOOP 4" is on. Routed through the
         // single reconciler so it can't clobber a smart-alarm the user still has on (#5).
         reconcileStrapAlarm()
@@ -2563,6 +2565,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // this reason; omitting it here would leave the strap armed for the old time until some unrelated
         // edit happened to reconcile — a strap buzzing at the wrong hour being worse than one not buzzing.
         reconcileStrapAlarm()
+        // The wind-down nudge is anchored to the wake time this just moved, so it has to move too —
+        // Apple's WindDownNudge has fanned out per-day since #554. Without this the reminder keeps
+        // pointing at the old wake on exactly the day the user changed.
+        if (windDownStore.enabled) {
+            WindDownScheduler.schedule(
+                appContext, windDownStore, phoneAlarmStore.targetMinutes, phoneAlarmStore.targetOverrides,
+            )
+        }
     }
 
     /** Set the days the phone alarm fires on. EMPTY = every day (see [SmartAlarmStore.weekdays]).
@@ -2603,7 +2613,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setWindDownEnabled(enabled: Boolean) {
         windDownStore.enabled = enabled
         _windDownEnabled.value = enabled
-        if (enabled) WindDownScheduler.schedule(appContext, windDownStore, phoneAlarmStore.targetMinutes)
+        if (enabled) WindDownScheduler.schedule(
+            appContext, windDownStore, phoneAlarmStore.targetMinutes, phoneAlarmStore.targetOverrides,
+        )
         else WindDownScheduler.cancel(appContext)
     }
 

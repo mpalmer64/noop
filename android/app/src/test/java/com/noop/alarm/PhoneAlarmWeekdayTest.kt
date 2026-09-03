@@ -211,4 +211,28 @@ class PhoneAlarmWeekdayTest {
         assertEquals(5 * 60, start)
     }
 
+
+    // MARK: wind-down fan-out (Apple parity — WindDownNudge has done this since #554)
+
+    /** The weekly anchor lands on the requested weekday at the requested minute. */
+    @Test fun theWeeklyNudgeAnchorLandsOnItsWeekday() {
+        val at = WindDownScheduler.nextWeeklyOccurrence(21 * 60 + 15, Calendar.THURSDAY, mondayAt())
+        assertEquals(Calendar.THURSDAY, at.get(Calendar.DAY_OF_WEEK))
+        assertEquals(21, at.get(Calendar.HOUR_OF_DAY))
+        assertEquals(15, at.get(Calendar.MINUTE))
+        assertEquals(27, at.get(Calendar.DAY_OF_MONTH))   // Mon 24 → Thu 27
+    }
+
+    /** Today counts only while its minute is still ahead. */
+    @Test fun todayCountsWhenItsMinuteHasNotPassed() {
+        val at = WindDownScheduler.nextWeeklyOccurrence(21 * 60, Calendar.MONDAY, mondayAt(hour = 5))
+        assertEquals(24, at.get(Calendar.DAY_OF_MONTH))
+    }
+
+    /** …and rolls a full week once it has, rather than scheduling a nudge in the past. */
+    @Test fun aPassedMinuteRollsAWholeWeek() {
+        val at = WindDownScheduler.nextWeeklyOccurrence(4 * 60, Calendar.MONDAY, mondayAt(hour = 9))
+        assertEquals(31, at.get(Calendar.DAY_OF_MONTH))   // Mon 24 → Mon 31
+    }
+
 }
