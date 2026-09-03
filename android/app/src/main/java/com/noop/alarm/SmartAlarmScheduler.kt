@@ -59,7 +59,21 @@ object SmartAlarmScheduler {
             weekdays = weekdays,
             windowMinutes = store.windowMinutes,
             afterFire = afterFire,
-        ) { store.targetFor(it) } ?: return null
+        ) { store.targetFor(it) } ?: run {
+            // No day is reachable, so there IS no next wake — clear the persisted edges rather than
+            // leaving the previous ones behind. The watcher reads exactly those two fields to decide it is
+            // inside a wake window, so a stale pair is a phantom window: it would keep feeding HR to the
+            // detector and could advance an alarm that no longer exists.
+            //
+            // Deliberately NOT the same as the `canScheduleExact` bail above. There the intent still
+            // stands and the OS is only refusing right now, so the stored edges must survive for
+            // `rearmPersisted` to retry. Here there is nothing to retry.
+            //
+            // `SmartAlarmStore.weekdays` filters to 1..7, so this is unreachable through the store today;
+            // the guard is for the caller that forgets, on a path where the failure is silent.
+            cancel(context, store)
+            return null
+        }
         val windowStartMs = deadline.timeInMillis - store.windowMinutes.toLong() * 60_000L
 
         scheduleExact(context, deadline.timeInMillis)
