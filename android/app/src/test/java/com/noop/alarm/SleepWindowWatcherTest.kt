@@ -2,6 +2,7 @@ package com.noop.alarm
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -55,6 +56,47 @@ class SleepWindowWatcherTest {
         assertFalse(w.shouldWake(120))
         repeat(6) { assertFalse(w.shouldWake(48)) }
         assertTrue(w.shouldWake(55))   // 55 is +7 over the real trough of 48
+    }
+
+    @Test fun awakeAtWindowOpenFiresOnceTheTroughCameFromTheNight() {
+        // #1858, the reported failure: the user is already awake — mid-workout, HR 95-130 — when the
+        // wake window opens. Every one of those readings is above troughCeilingBpm, so when the trough
+        // could only be learned inside the window it was never established at all and the fire gate
+        // read that as "no reference yet": the alarm always rang at the hard deadline, most reliably
+        // when the user was most obviously awake. With the trough learned overnight, being awake is
+        // simply the largest rise above it.
+        val w = watcher()
+        repeat(6) { w.note(50) }              // the night, before the window
+        assertTrue(w.shouldWake(110))         // window opens, user is up
+    }
+
+    @Test fun noteLearnsTheTroughWithoutEverFiring() {
+        val w = watcher()
+        // Learning must decide nothing on its own: a rise seen BEFORE the window is not a wake.
+        repeat(6) { w.note(50) }
+        w.note(90)
+        assertEquals(50, w.trough)
+        // Only a reading fed through shouldWake (i.e. inside the window) can advance the alarm.
+        assertTrue(w.shouldWake(58))
+    }
+
+    @Test fun aDropoutLowDoesNotBecomeTheTrough() {
+        // Learning across hours rather than one window exposes the trough to more artefacts, and a
+        // too-LOW trough is the dangerous direction: the gate is trough + riseBpm, so it would fire
+        // the instant the window opened. Readings below troughFloorBpm are not trough candidates.
+        val w = watcher()
+        w.note(3)
+        repeat(6) { w.note(48) }
+        assertEquals(48, w.trough)
+        assertFalse(w.shouldWake(52))   // +4 over the REAL trough, not +49 over the artefact
+    }
+
+    @Test fun troughIsNullUntilAPlausibleReadingArrives() {
+        val w = watcher()
+        assertNull(w.trough)
+        w.note(120)                     // above the ceiling: not a candidate
+        assertNull(w.trough)
+        assertEquals(1, w.samples)      // still counted as a sample seen
     }
 
     @Test fun resetClearsState() {

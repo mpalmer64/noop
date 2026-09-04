@@ -203,9 +203,13 @@ class WhoopConnectionService : Service() {
      *  and, on a lighter-phase reading, advances the GUARANTEED alarm earlier. It can only ever move
      *  the alarm earlier within the window — the hard deadline scheduled via AlarmManager is the floor
      *  of safety, so if BLE drops or no light sleep is found the user is still woken at the window end.
-     *  The detector is reset each time we (re)enter a window. */
+     *  The detector is reset once per armed deadline (#1858), NOT on window entry — the trough it
+ *  judges against is learned over the hours BEFORE the window, so resetting as the window opens
+ *  would discard exactly the reference the decision needs. */
     private val sleepWatcher = SleepWindowWatcher()
     private var inAlarmWindow = false
+    /** The deadline [sleepWatcher] is currently learning a trough for; a change means a new night. */
+    private var watchedDeadlineMs = 0L
 
     /** The smart-alarm HR collector, alive for the life of the service. */
     private var alarmJob: Job? = null
@@ -522,11 +526,35 @@ class WhoopConnectionService : Service() {
                         return@collect
                     }
                     val now = System.currentTimeMillis()
-                    val inWindow = now in store.scheduledWindowStartMs until store.scheduledDeadlineMs
-                    if (inWindow && !inAlarmWindow) sleepWatcher.reset()   // fresh night
-                    inAlarmWindow = inWindow
-                    if (!inWindow) return@collect
+                    val deadline = store.scheduledDeadlineMs
+                    val windowStart = store.scheduledWindowStartMs
+                    // A newly-armed deadline is what marks a fresh night, not the window opening
+                    // (#1858). Resetting on window entry meant the trough could only ever come from
+                    // the same minutes being judged, so someone already awake at window open had no
+                    // sleeping trough to rise above and the smart advance could never fire.
+                    if (deadline != watchedDeadlineMs) {
+                        watchedDeadlineMs = deadline
+                        sleepWatcher.reset()
+                        inAlarmWindow = false
+                    }
+                    if (now < windowStart - TROUGH_LEARN_LEAD_MS || now >= deadline) return@collect
+                    if (now < windowStart) {
+                        sleepWatcher.note(hr)   // learn the night's trough; decide nothing yet
+                        return@collect
+                    }
+                    if (!inAlarmWindow) {
+                        inAlarmWindow = true
+                        // The alarm package had no logging at all, so a report of "the smart alarm
+                        // never works" could not be told apart from "no live HR all night". These two
+                        // lines make the difference visible in the log the user already exports.
+                        ble.externalLog(
+                            "Smart alarm: wake window open, trough " +
+                                "${sleepWatcher.trough ?: "not established"} bpm from " +
+                                "${sleepWatcher.samples} readings",
+                        )
+                    }
                     if (sleepWatcher.shouldWake(hr)) {
+                        ble.externalLog("Smart alarm: advancing - HR $hr above trough ${sleepWatcher.trough}")
                         SmartAlarmScheduler.advanceTo(this@WhoopConnectionService, store, now)
                     }
                 }
@@ -696,6 +724,15 @@ class WhoopConnectionService : Service() {
         private const val CHANNEL_ID = "noop_strap_connection"
         private const val NOTIF_ID = 4201
         const val ACTION_STOP = "com.noop.ble.action.STOP_CONNECTION"
+
+        /**
+         * How long before the wake window opens the detector starts learning the night's HR trough
+         * (#1858). Bounded rather than "since the alarm was armed", because the next night's alarm is
+         * armed the moment this one fires: without a bound the trough would be learned across the
+         * whole waking day too, and one quiet afternoon reading would set a floor that has nothing to
+         * do with the night being judged.
+         */
+        private const val TROUGH_LEARN_LEAD_MS = 8L * 60L * 60L * 1000L
 
         /**
          * Promote the process to the foreground so the strap stays connected. Safe to call when
