@@ -54,50 +54,40 @@ struct VitalWidgetView: View {
 
     // MARK: Home screen
 
+    /// Three rings (recovery, strain, sleep) to one decimal, HRV/RHR beneath, live BPM when connected.
     private var small: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("RECOVERY").font(.caption2.weight(.semibold)).tracking(0.8).foregroundStyle(VColor.textSecondary)
-                Spacer(minLength: 4)
+            HStack(spacing: 6) {
+                ring("Recovery", tenths(s?.recovery), s?.recovery.map { $0 / 100 }, VColor.recovery(s?.recovery), size: 42)
+                ring("Strain", strainText, s?.strain.map { min(1, $0 / 100) }, VColor.strain, size: 42)
+                ring("Sleep", tenths(s?.rest), s?.rest.map { $0 / 100 }, VColor.sleep, size: 42)
+            }
+            .frame(maxWidth: .infinity)
+            Spacer(minLength: 4)
+            HStack(spacing: 6) {
+                stat("HRV", tenths(s?.hrv), VColor.hrv)
+                stat("RHR", s?.restingHr.map(String.init) ?? "--", VColor.rhr)
+                Spacer(minLength: 0)
                 if let bpm = s?.bpm, s?.connected == true {
                     HStack(spacing: 2) {
-                        Image(systemName: "heart.fill").font(.system(size: 9))
+                        Image(systemName: "heart.fill").font(.system(size: 8))
                         Text("\(bpm)").font(.caption2.weight(.semibold)).monospacedDigit()
                     }
                     .foregroundStyle(VColor.heart)
-                    .lineLimit(1)
                 }
             }
-            Spacer(minLength: 4)
-            HStack(alignment: .center, spacing: 8) {
-                ZStack {
-                    VRing(progress: s?.recovery.map { Double($0) / 100 },
-                          tint: VColor.recovery(s?.recovery.map(Double.init)), lineWidth: 7)
-                    Text(s?.recovery.map(String.init) ?? "--")
-                        .font(.system(size: 22, weight: .semibold, design: .rounded)).monospacedDigit()
-                        .minimumScaleFactor(0.7).lineLimit(1)
-                }
-                .frame(width: 62, height: 62)
-                VStack(alignment: .leading, spacing: 3) {
-                    line("Strain", strainText, VColor.strain)
-                    line("Sleep", s?.rest.map { "\($0)%" } ?? "--", VColor.sleep)
-                    line("HRV", s?.hrv.map { "\($0)" } ?? "--", VColor.hrv)
-                }
-                .frame(maxWidth: .infinity)
-            }
-            Spacer(minLength: 4)
+            Spacer(minLength: 3)
             footer
         }
     }
 
     private var medium: some View {
         HStack(spacing: 14) {
-            ring("Recovery", s?.recovery.map(String.init) ?? "--", s?.recovery.map { Double($0) / 100 },
-                 VColor.recovery(s?.recovery.map(Double.init)))
-            ring("Strain", strainText, s?.strain.map { min(1, Double($0) / 100) }, VColor.strain)
-            ring("Sleep", s?.rest.map(String.init) ?? "--", s?.rest.map { Double($0) / 100 }, VColor.sleep)
+            ring("Recovery", tenths(s?.recovery), s?.recovery.map { $0 / 100 }, VColor.recovery(s?.recovery))
+            ring("Strain", strainText, s?.strain.map { min(1, $0 / 100) }, VColor.strain)
+            ring("Sleep", tenths(s?.rest), s?.rest.map { $0 / 100 }, VColor.sleep)
             VStack(alignment: .leading, spacing: 5) {
-                line("HRV", s?.hrv.map { "\($0) ms" } ?? "--", VColor.hrv)
+                line("HRV", tenths(s?.hrv) + " ms", VColor.hrv)
                 line("RHR", s?.restingHr.map { "\($0) bpm" } ?? "--", VColor.rhr)
                 if let bpm = s?.bpm, s?.connected == true {
                     line("Live", "\(bpm) bpm", VColor.heart)
@@ -114,10 +104,10 @@ struct VitalWidgetView: View {
     // MARK: Lock screen
 
     private var circular: some View {
-        Gauge(value: Double(s?.recovery ?? 0), in: 0...100) {
+        Gauge(value: s?.recovery ?? 0, in: 0...100) {
             Image(systemName: "heart.fill")
         } currentValueLabel: {
-            Text(s?.recovery.map(String.init) ?? "--").font(.system(.body, design: .rounded).weight(.semibold))
+            Text(s?.recovery.map { "\(Int($0.rounded()))" } ?? "--").font(.system(.body, design: .rounded).weight(.semibold))
         }
         .gaugeStyle(.accessoryCircular)
     }
@@ -128,39 +118,53 @@ struct VitalWidgetView: View {
                 Image(systemName: "heart.fill").font(.caption2)
                 Text("Vital").font(.caption.weight(.semibold))
             }
-            Text("Recovery \(s?.recovery.map(String.init) ?? "--")%  ·  Strain \(strainText)")
+            Text("Recovery \(tenths(s?.recovery))%  ·  Strain \(strainText)")
                 .font(.caption2).monospacedDigit()
-            Text("HRV \(s?.hrv.map(String.init) ?? "--") ms  ·  RHR \(s?.restingHr.map(String.init) ?? "--")")
+            Text("Sleep \(tenths(s?.rest))%  ·  HRV \(tenths(s?.hrv))  ·  RHR \(s?.restingHr.map(String.init) ?? "--")")
                 .font(.caption2).monospacedDigit().foregroundStyle(.secondary)
         }
     }
 
     // MARK: Pieces
 
-    private var strainText: String {
-        s?.strain.map { String(format: "%.1f", Double($0) * 21 / 100) } ?? "--"
+    private func tenths(_ v: Double?) -> String { v.map { String(format: "%.1f", $0) } ?? "--" }
+
+    private var strainText: String { tenths(s?.strain.map { $0 * 21 / 100 }) }
+
+    private func ring(_ title: String, _ value: String, _ progress: Double?, _ tint: Color, size: CGFloat = 58) -> some View {
+        VStack(spacing: 3) {
+            ZStack {
+                VRing(progress: progress, tint: tint, lineWidth: size < 50 ? 4.5 : 6)
+                Text(value)
+                    .font(.system(size: size * 0.26, weight: .semibold, design: .rounded)).monospacedDigit()
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                    .padding(.horizontal, size * 0.16)
+            }
+            .frame(width: size, height: size)
+            Text(title.uppercased()).font(.system(size: size < 50 ? 7.5 : 9, weight: .semibold)).tracking(0.5)
+                .foregroundStyle(VColor.textSecondary).lineLimit(1).minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity)
     }
 
-    private func ring(_ title: String, _ value: String, _ progress: Double?, _ tint: Color) -> some View {
-        VStack(spacing: 4) {
-            ZStack {
-                VRing(progress: progress, tint: tint, lineWidth: 6)
-                Text(value).font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit()
-            }
-            .frame(width: 58, height: 58)
-            Text(title.uppercased()).font(.system(size: 9, weight: .semibold)).tracking(0.6)
-                .foregroundStyle(VColor.textSecondary).lineLimit(1).minimumScaleFactor(0.8)
+    private func stat(_ label: String, _ value: String, _ tint: Color) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 3) {
+            Circle().fill(tint).frame(width: 4, height: 4).alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 2.5 }
+            Text(label).font(.system(size: 9)).foregroundStyle(VColor.textSecondary)
+            Text(value).font(.system(size: 10, weight: .semibold)).monospacedDigit().lineLimit(1).fixedSize()
         }
     }
 
+    /// One label/value row. The value never truncates: it takes layout priority and the label yields.
     private func line(_ label: String, _ value: String, _ tint: Color) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
             Circle().fill(tint).frame(width: 5, height: 5).alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 3 }
-            Text(label).font(.caption2).foregroundStyle(VColor.textSecondary).lineLimit(1)
+            Text(label).font(.caption2).foregroundStyle(VColor.textSecondary)
+                .lineLimit(1).minimumScaleFactor(0.7)
                 .frame(width: 40, alignment: .leading)
-            Spacer(minLength: 2)
-            Text(value).font(.caption.weight(.semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            Spacer(minLength: 3)
+            Text(value).font(.caption.weight(.semibold)).monospacedDigit()
+                .lineLimit(1).fixedSize(horizontal: true, vertical: false).layoutPriority(1)
         }
     }
 

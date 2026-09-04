@@ -289,10 +289,10 @@ final class VitalModel: ObservableObject {
     private func publishSnapshot() {
         let a = derived.anchor
         VitalSnapshot.publish(VitalSnapshot(
-            recovery: a?.recovery.map { Int($0.rounded()) },
-            strain: (a?.strain ?? derived.liveStrain).map { Int($0.rounded()) },
-            rest: derived.restScore.map { Int($0.rounded()) },
-            hrv: a?.avgHrv.map { Int($0.rounded()) },
+            recovery: a?.recovery,
+            strain: a?.strain ?? derived.liveStrain,
+            rest: derived.restScore,
+            hrv: a?.avgHrv,
             restingHr: a?.restingHr,
             bpm: bpm ?? live.heartRate,
             batteryPct: live.batteryPct.map { Int($0.rounded()) },

@@ -9,11 +9,11 @@ import WidgetKit
 /// Cadence follows NOOP's precedent: the app republishes at most once a minute (from the derived-state
 /// tick) and only reloads WidgetKit timelines when a rendered field actually changed.
 struct VitalSnapshot: Codable, Equatable {
-    var recovery: Int?
+    var recovery: Double?
     /// Strain on NOOP's 0–100 Effort axis; the widget converts to WHOOP's 0–21 for display.
-    var strain: Int?
-    var rest: Int?
-    var hrv: Int?
+    var strain: Double?
+    var rest: Double?
+    var hrv: Double?
     var restingHr: Int?
     var bpm: Int?
     var batteryPct: Int?
@@ -62,7 +62,8 @@ struct VitalSnapshot: Codable, Equatable {
     }
 
     private var renderedFields: [String] {
-        [recovery, strain, rest, hrv, restingHr, bpm, batteryPct].map { $0.map(String.init) ?? "" }
+        [recovery, strain, rest, hrv].map { $0.map { String(format: "%.1f", $0) } ?? "" }
+            + [restingHr, bpm, batteryPct].map { $0.map(String.init) ?? "" }
             + [connected ? "1" : "0", dayKey ?? ""]
     }
 }
