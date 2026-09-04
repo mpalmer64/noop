@@ -505,6 +505,9 @@ targets:
       - path: Vital
         excludes:
           - "Resources/Info.plist"
+          # Personal seed data (gitignored locally). Never a bundled resource: the Debug-only script
+          # phase below copies it in, so a Release / friends build cannot carry the developer's history.
+          - "Seed"
       # WHOOP path only. Non-WHOOP live sources (generic HR straps, Huami, FTMS, Oura ring),
       # their coordinator, and the HR re-broadcaster are excluded; nothing in the WHOOP core
       # references them.
@@ -587,6 +590,17 @@ targets:
         VITAL_APP_GROUP_ID: group.$(BUNDLE_ID_PREFIX).vital
     # Per-target scheme so `xcodebuild -scheme Vital` works without touching the shared `schemes:` map.
     scheme: {}
+    postCompileScripts:
+      - name: Copy Debug-only seed export
+        script: |
+          SEED="$SRCROOT/Vital/Seed/whoop_export.zip"
+          DEST="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/whoop_export.zip"
+          if [ "$CONFIGURATION" = "Debug" ] && [ -f "$SEED" ]; then
+            cp "$SEED" "$DEST"
+          else
+            rm -f "$DEST"
+          fi
+        basedOnDependencyAnalysis: false
     dependencies:
       - package: WhoopProtocol
       - package: WhoopStore
