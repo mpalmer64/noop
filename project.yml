@@ -508,6 +508,8 @@ targets:
           # Personal seed data (gitignored locally). Never a bundled resource: the Debug-only script
           # phase below copies it in, so a Release / friends build cannot carry the developer's history.
           - "Seed"
+          # Build output of Vital/Scripts/testflight.sh (gitignored locally); never a resource.
+          - "Scripts/out"
       # WHOOP path only. Non-WHOOP live sources (generic HR straps, Huami, FTMS, Oura ring),
       # their coordinator, and the HR re-broadcaster are excluded; nothing in the WHOOP core
       # references them.
