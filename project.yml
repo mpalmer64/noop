@@ -491,6 +491,78 @@ targets:
     dependencies:
       - package: StrandDesign
 
+  # ---------------------------------------------------------------------------
+  # Vital — fork-local (branch `max`) second iOS app: an independent SwiftUI UI over
+  # the SAME WHOOP collection layer, store and analytics as NOOP. Compiles Strand/BLE
+  # + Strand/Collect straight from the shared tree (no copies, no edits); the few
+  # app-layer symbols that layer references are shimmed in Vital/Compat/UpstreamShims.swift.
+  # Not for upstream. One contiguous block, appended only — keep merges cheap.
+  Vital:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Vital
+        excludes:
+          - "Resources/Info.plist"
+      # WHOOP path only. Non-WHOOP live sources (generic HR straps, Huami, FTMS, Oura ring),
+      # their coordinator, and the HR re-broadcaster are excluded; nothing in the WHOOP core
+      # references them.
+      - path: Strand/BLE
+        excludes:
+          - "SourceCoordinator.swift"
+          - "LiveHRSource.swift"
+          - "StandardHRSource.swift"
+          - "HuamiHRSource.swift"
+          - "HuamiHeartRate.swift"
+          - "FTMSSource.swift"
+          - "OuraLiveSource.swift"
+          - "OuraActivityDump.swift"
+          - "OuraMotionDump.swift"
+          - "OuraRawDump.swift"
+          - "OuraRealStepsDump.swift"
+          - "HrBroadcaster.swift"
+          - "GarminBroadcast.swift"
+          - "ExperimentalBrand.swift"
+      - path: Strand/Collect
+      # Self-contained leaf helpers the BLE layer calls (verified: no further app-layer refs).
+      - path: Strand/System/TestCentre.swift
+      - path: Strand/System/IOSDiagnostics.swift
+      - path: Strand/System/HealthSyncStats.swift
+      - path: Strand/System/FileExport.swift
+      - path: Strand/Data/InactivityPrefs.swift
+    info:
+      path: Vital/Resources/Info.plist
+      properties:
+        CFBundleName: Vital
+        CFBundleDisplayName: Vital
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSApplicationCategoryType: public.app-category.healthcare-fitness
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        # bluetooth-central is what keeps the strap link alive with the phone in a pocket. Nothing
+        # else yet: no background tasks registered, no HealthKit, no App Group (Phase 4).
+        UIBackgroundModes:
+          - bluetooth-central
+        NSBluetoothAlwaysUsageDescription: "Vital connects directly to your WHOOP strap over Bluetooth to read heart rate, battery, and sensor data on this iPhone. Nothing leaves your device."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(BUNDLE_ID_PREFIX).vital
+        PRODUCT_NAME: Vital
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1"
+    # Per-target scheme so `xcodebuild -scheme Vital` works without touching the shared `schemes:` map.
+    scheme: {}
+    dependencies:
+      - package: WhoopProtocol
+      - package: WhoopStore
+      - package: StrandAnalytics
+      # LiveState imports OuraProtocol (OuraWearState); FileExport imports ZIPFoundation.
+      - package: OuraProtocol
+      - package: ZIPFoundation
+
 # Explicit schemes so `xcodebuild -scheme Strand …` builds + tests the macOS app (with StrandTests
 # wired in) and `-scheme NOOPiOS …` builds the iOS app. Names match the app-build CI matrix.
 schemes:
