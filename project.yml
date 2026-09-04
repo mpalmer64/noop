@@ -558,8 +558,10 @@ targets:
       properties:
         CFBundleName: Vital
         CFBundleDisplayName: Vital
-        CFBundleShortVersionString: "0.1.0"
-        CFBundleVersion: "1"
+        CFBundleShortVersionString: "$(VITAL_VERSION)"
+        CFBundleVersion: "$(VITAL_BUILD)"
+        # No custom crypto (only Apple's TLS/CoreBluetooth), so TestFlight skips the export-compliance prompt.
+        ITSAppUsesNonExemptEncryption: false
         # Read at runtime by VitalSnapshot.suiteName; kept in lockstep with the entitlement below.
         AppGroupIdentifier: "$(VITAL_APP_GROUP_ID)"
         # vital://friend?d=… links carry a friend's shared stats card (Leaderboard); no server involved.
@@ -588,6 +590,10 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         # Vital's own App Group (distinct from NOOP's), shared with VitalWidgets.
         VITAL_APP_GROUP_ID: group.$(BUNDLE_ID_PREFIX).vital
+        # Version/build shared with the widget extension (they must match). Vital/Scripts/testflight.sh
+        # overrides VITAL_BUILD per upload so every TestFlight build number is unique.
+        VITAL_VERSION: "0.1.0"
+        VITAL_BUILD: "1"
     # Per-target scheme so `xcodebuild -scheme Vital` works without touching the shared `schemes:` map.
     scheme: {}
     postCompileScripts:
@@ -631,8 +637,8 @@ targets:
       path: VitalWidgets/Info.plist
       properties:
         CFBundleDisplayName: Vital
-        CFBundleShortVersionString: "0.1.0"
-        CFBundleVersion: "1"
+        CFBundleShortVersionString: "$(VITAL_VERSION)"
+        CFBundleVersion: "$(VITAL_BUILD)"
         AppGroupIdentifier: "$(VITAL_APP_GROUP_ID)"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
@@ -648,6 +654,8 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         TARGETED_DEVICE_FAMILY: "1"
         VITAL_APP_GROUP_ID: group.$(BUNDLE_ID_PREFIX).vital
+        VITAL_VERSION: "0.1.0"
+        VITAL_BUILD: "1"
 
 # Explicit schemes so `xcodebuild -scheme Strand …` builds + tests the macOS app (with StrandTests
 # wired in) and `-scheme NOOPiOS …` builds the iOS app. Names match the app-build CI matrix.
