@@ -132,6 +132,8 @@ struct VStatTile: View {
     var systemImage: String? = nil
     var footnote: String? = nil
     var spark: [Double]? = nil
+    /// Standalone tiles sit on the canvas and use the card surface; tiles inside a card pass `.surfaceInset`.
+    var background: Color = VColor.surface
 
     var body: some View {
         VStack(alignment: .leading, spacing: VSpace.sm) {
@@ -155,8 +157,10 @@ struct VStatTile: View {
             }
         }
         .padding(VSpace.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(VColor.surfaceInset, in: RoundedRectangle(cornerRadius: VSpace.tileRadius, style: .continuous))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(background, in: RoundedRectangle(cornerRadius: VSpace.tileRadius, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: VSpace.tileRadius, style: .continuous)
+            .strokeBorder(VColor.hairline, lineWidth: 1))
     }
 }
 

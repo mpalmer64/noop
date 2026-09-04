@@ -6,6 +6,7 @@ struct SettingsScreen: View {
     @EnvironmentObject private var model: VitalModel
     @Environment(\.dismiss) private var dismiss
     @State private var showImporter = false
+    @AppStorage(VitalAppearance.key) private var appearance: VitalAppearance = .dark
 
     var body: some View {
         NavigationStack {
@@ -94,6 +95,9 @@ struct SettingsScreen: View {
 
     private var aboutSection: some View {
         Section {
+            Picker("Appearance", selection: $appearance) {
+                ForEach(VitalAppearance.allCases) { a in Text(a.label).tag(a) }
+            }
             LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
             NavigationLink("Licence & attribution") { NoticesScreen() }
         } header: { Text("About") } footer: {

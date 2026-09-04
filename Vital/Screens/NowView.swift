@@ -46,7 +46,12 @@ struct NowScreen: View {
                             .help(fw)
                     }
                 }
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Image(systemName: "heart.fill")
+                        .font(.title)
+                        .foregroundStyle(VColor.heart)
+                        .symbolEffect(.pulse, options: .repeating, isActive: model.bpm != nil)
+                        .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 14 }
                     Text(model.bpm.map(String.init) ?? "--")
                         .font(VFont.hero)
                         .monospacedDigit()
@@ -57,12 +62,6 @@ struct NowScreen: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, VSpace.sm)
-                .overlay(alignment: .leading) {
-                    Image(systemName: "heart.fill")
-                        .font(.title2)
-                        .foregroundStyle(VColor.heart)
-                        .symbolEffect(.pulse, options: .repeating, isActive: model.bpm != nil)
-                }
                 if !live.connected {
                     connectButtons
                 } else if let hint = live.pairingHint ?? live.reconnectGuide {

@@ -18,6 +18,7 @@ struct TodayScreen: View {
                            message: "Wear the strap overnight, or import a WHOOP export in Settings to seed months of history.")
                 }
             } else {
+                if let day, !isRecent(day.day) { staleNotice(day.day) }
                 ringsCard
                 vitalsGrid
                 sleepCard
@@ -93,10 +94,18 @@ struct TodayScreen: View {
                 respirationTile
                 spo2Tile
             }
-            if let dev = day?.skinTempDevC {
-                VStatTile(title: "Skin temp", value: String(format: "%+.1f", dev), unit: "°C vs baseline",
-                          tint: VColor.temperature, systemImage: "thermometer.medium",
-                          footnote: abs(dev) < 0.3 ? "Within your normal range" : "Outside your normal range")
+            if let t = day?.skinTempDevC {
+                // On-device rows store a deviation from baseline; a WHOOP export row stores the absolute
+                // reading (WhoopImporter notes this). Anything above 20 cannot be a deviation.
+                if t > 20 {
+                    VStatTile(title: "Skin temp", value: String(format: "%.1f", t), unit: "°C",
+                              tint: VColor.temperature, systemImage: "thermometer.medium",
+                              footnote: "Absolute reading from the WHOOP export")
+                } else {
+                    VStatTile(title: "Skin temp", value: String(format: "%+.1f", t), unit: "°C vs baseline",
+                              tint: VColor.temperature, systemImage: "thermometer.medium",
+                              footnote: abs(t) < 0.3 ? "Within your normal range" : "Outside your normal range")
+                }
             }
         }
     }
@@ -168,6 +177,24 @@ struct TodayScreen: View {
             Text(VFormat.hoursMinutes(minutes)).font(.caption.weight(.semibold)).monospacedDigit()
         }
         .padding(.trailing, VSpace.sm)
+    }
+
+    private func isRecent(_ key: String) -> Bool {
+        guard let d = VFormat.date(fromKey: key) else { return false }
+        return Calendar.current.isDateInToday(d) || Calendar.current.isDateInYesterday(d)
+    }
+
+    /// The headline describes the freshest scored day, which may be old (an import with no strap nights
+    /// since). Say so rather than letting a two-month-old score pass as today's.
+    private func staleNotice(_ key: String) -> some View {
+        HStack(spacing: VSpace.sm) {
+            Image(systemName: "info.circle.fill").foregroundStyle(VColor.textTertiary)
+            Text("Latest scored day is \(VFormat.dayLabel(key)). Wear the strap overnight and today's score appears after the morning offload.")
+                .font(.footnote).foregroundStyle(VColor.textSecondary)
+        }
+        .padding(VSpace.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(VColor.surface, in: RoundedRectangle(cornerRadius: VSpace.tileRadius, style: .continuous))
     }
 
     private func bandName(_ r: Double) -> String {

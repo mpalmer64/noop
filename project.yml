@@ -571,6 +571,7 @@ targets:
         PRODUCT_NAME: Vital
         GENERATE_INFOPLIST_FILE: NO
         TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     # Per-target scheme so `xcodebuild -scheme Vital` works without touching the shared `schemes:` map.
     scheme: {}
     dependencies:

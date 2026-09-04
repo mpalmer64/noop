@@ -22,7 +22,11 @@ struct TrendsScreen: View {
                 ForEach(TrendRange.allCases) { r in Text(r.label).tag(r) }
             }
             .pickerStyle(.segmented)
-            .padding(.bottom, VSpace.xs)
+            if let last = days.map(\.day).max(), let d = VFormat.date(fromKey: last), !Calendar.current.isDateInToday(d) {
+                Text("Ranges end at the latest scored day, \(VFormat.dayLabel(last)).")
+                    .font(.caption).foregroundStyle(VColor.textTertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             if days.isEmpty {
                 VCard {
