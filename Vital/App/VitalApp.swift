@@ -3,14 +3,20 @@ import SwiftUI
 @main
 struct VitalApp: App {
     @StateObject private var model = VitalModel()
+    @StateObject private var friends = FriendsStore()
     @AppStorage(VitalAppearance.key) private var appearance: VitalAppearance = .dark
 
     var body: some Scene {
         WindowGroup {
             VitalRootView()
                 .environmentObject(model)
+                .environmentObject(friends)
                 .preferredColorScheme(appearance.colorScheme)
                 .task { await model.start() }
+                // A friend's `vital://friend?d=…` link tapped in iMessage lands here.
+                .onOpenURL { url in
+                    if let card = FriendCard.decode(url) { friends.upsert(card) }
+                }
         }
     }
 }
@@ -21,6 +27,7 @@ struct VitalRootView: View {
     /// headless simulator run can screenshot every screen. Inert in normal use.
     @State private var tab: Tab = Tab(rawValue: ProcessInfo.processInfo.environment["VITAL_TAB"] ?? "") ?? .now
     @State private var showSettings = ProcessInfo.processInfo.environment["VITAL_TAB"] == "settings"
+    @State private var showFriends = ProcessInfo.processInfo.environment["VITAL_TAB"] == "friends"
 
     enum Tab: String { case now, today, sleep, activity, trends }
 
@@ -39,6 +46,7 @@ struct VitalRootView: View {
         }
         .tint(VColor.textPrimary)
         .sheet(isPresented: $showSettings) { SettingsScreen() }
+        .sheet(isPresented: $showFriends) { NavigationStack { LeaderboardScreen() } }
     }
 }
 

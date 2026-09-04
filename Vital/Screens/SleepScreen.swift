@@ -13,6 +13,7 @@ struct SleepScreen: View {
 
     var body: some View {
         VScreen(title: "Sleep") {
+            if let coach = d.sleepCoach { coachCard(coach) }
             if let night {
                 headline(night)
                 timelineCard(night)
@@ -34,6 +35,43 @@ struct SleepScreen: View {
     }
 
     // MARK: Cards
+
+    /// Sleep coach: need (NOOP's personalised need), debt (NOOP's ledger), and tonight's bedtime.
+    private func coachCard(_ c: SleepCoach) -> some View {
+        VCard {
+            VStack(alignment: .leading, spacing: VSpace.md) {
+                VCardHeader(title: "Sleep coach", subtitle: "\(c.nightsUsed) nights", tint: VColor.sleep, systemImage: "bed.double.fill")
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("In bed by").font(VFont.label).foregroundStyle(VColor.textTertiary)
+                        Text(c.bedtimeMin.map(SleepCoach.clock) ?? "--").font(VFont.display).monospacedDigit()
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 6) {
+                        HStack(spacing: 4) {
+                            Text("Need").font(VFont.label).foregroundStyle(VColor.textTertiary)
+                            Text(VFormat.hoursMinutes(c.needHours * 60)).font(.subheadline.weight(.semibold)).monospacedDigit()
+                        }
+                        HStack(spacing: 4) {
+                            Text(c.debtMin > 0 ? "Debt" : "Surplus").font(VFont.label).foregroundStyle(VColor.textTertiary)
+                            Text(VFormat.hoursMinutes(abs(c.debtMin))).font(.subheadline.weight(.semibold)).monospacedDigit()
+                                .foregroundStyle(c.debtMin > 60 ? VColor.recoveryMid : VColor.textPrimary)
+                        }
+                        if let w = c.habitualWakeMin {
+                            HStack(spacing: 4) {
+                                Text("Usual wake").font(VFont.label).foregroundStyle(VColor.textTertiary)
+                                Text(SleepCoach.clock(w)).font(.subheadline.weight(.semibold)).monospacedDigit()
+                            }
+                        }
+                    }
+                }
+                Text(c.debtMin > 60
+                     ? "You're behind. Tonight's time adds back a third of the debt."
+                     : "You're on track. Tonight's time covers your need.")
+                    .font(.footnote).foregroundStyle(VColor.textSecondary)
+            }
+        }
+    }
 
     private func headline(_ night: CachedSleepSession) -> some View {
         let totals = SleepStageTotals.minutes(fromStagesJSON: night.stagesJSON)

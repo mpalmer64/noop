@@ -46,7 +46,7 @@ struct TrendsScreen: View {
             }
             VAsOf(dayKey: model.derived.anchor?.day, computedAt: model.derived.computedAt).padding(.top, VSpace.xs)
         }
-        .toolbar { SettingsToolbarButton() }
+        .toolbar { FriendsToolbarButton(); SettingsToolbarButton() }
     }
 
     // MARK: Data shaping

@@ -259,6 +259,9 @@ final class VitalModel: ObservableObject {
         if let s = lastNight {
             nightHR = await repo.hrSamples(from: s.effectiveStartTs, to: s.endTs, limit: 4000)
         }
+        let recentSessions = await repo.sleepSessions(from: nowSec - 14 * 86_400, to: nowSec, limit: 60)
+        let coach = SleepCoach.make(days: days, sessions: recentSessions, age: profile.age)
+        let health = HealthMonitor.make(days: days, anchor: anchor, isWhoop5: isWhoop5)
 
         derived = VitalDerived(days: days,
                                anchor: anchor,
@@ -269,7 +272,9 @@ final class VitalModel: ObservableObject {
                                liveStrain: liveStrain,
                                computedAt: now,
                                importedDays: repo.freshness.importedDays,
-                               computedDays: repo.freshness.computedDays)
+                               computedDays: repo.freshness.computedDays,
+                               sleepCoach: coach,
+                               health: health)
         publishSnapshot()
         if VitalNotifications.morningRecoveryIfDue(anchor: anchor, todayKey: todayKey),
            VitalHaptics.enabled(VitalHaptics.morningBuzzKey) {
@@ -371,6 +376,8 @@ struct VitalDerived {
     var computedAt: Date?
     var importedDays = 0
     var computedDays = 0
+    var sleepCoach: SleepCoach?
+    var health: HealthMonitor?
 
     var hasHistory: Bool { !days.isEmpty }
 }

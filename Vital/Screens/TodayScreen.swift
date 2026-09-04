@@ -20,15 +20,75 @@ struct TodayScreen: View {
             } else {
                 if let day, !isRecent(day.day) { staleNotice(day.day) }
                 ringsCard
+                if let coach = model.strainCoach { strainCoachCard(coach) }
                 vitalsGrid
+                if let h = d.health { healthCard(h) }
                 sleepCard
                 if let day, day.steps != nil || day.activeKcalEst != nil { activityCard(day) }
             }
             VAsOf(dayKey: day?.day, computedAt: d.computedAt)
                 .padding(.top, VSpace.xs)
         }
-        .toolbar { SettingsToolbarButton() }
+        .toolbar { FriendsToolbarButton(); SettingsToolbarButton() }
         .refreshable { await model.runScoring(force: false, skipIfUnchanged: true) }
+    }
+
+    /// WHOOP-style strain coach: where today's accrual sits against the band the recovery earns.
+    private func strainCoachCard(_ coach: StrainCoach) -> some View {
+        let current = (strainToShow ?? 0) * 21 / 100
+        let lo = coach.targetRange.lowerBound, hi = coach.targetRange.upperBound
+        return VCard {
+            VStack(alignment: .leading, spacing: VSpace.md) {
+                VCardHeader(title: "Strain coach", subtitle: String(format: "target %.0f–%.0f", lo, hi),
+                            tint: VColor.strain, systemImage: "target")
+                HStack(alignment: .firstTextBaseline) {
+                    Text(coach.headline).font(VFont.title)
+                    Spacer()
+                    Text(current >= lo ? (current > hi ? "Over target" : "In range") : String(format: "%.1f to go", lo - current))
+                        .font(.footnote.weight(.semibold)).foregroundStyle(current >= lo ? VColor.recoveryHigh : VColor.textSecondary)
+                }
+                GeometryReader { geo in
+                    let w = geo.size.width
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(VColor.track).frame(height: 8)
+                        Capsule().fill(VColor.strain.opacity(0.35))
+                            .frame(width: w * CGFloat((hi - lo) / 21), height: 8)
+                            .offset(x: w * CGFloat(lo / 21))
+                        Capsule().fill(VColor.strain).frame(width: max(4, w * CGFloat(min(21, current) / 21)), height: 8)
+                    }
+                }
+                .frame(height: 8)
+                Text(coach.band == .low
+                     ? "Recovery is low, so light movement counts as a win today."
+                     : coach.band == .mid ? "Aim for a solid session without redlining."
+                     : "Your body is ready for a hard day; a big session will land well.")
+                    .font(.footnote).foregroundStyle(VColor.textSecondary)
+            }
+        }
+    }
+
+    /// Health monitor: overnight vitals against your own recent baseline (NOOP's VitalBands).
+    private func healthCard(_ h: HealthMonitor) -> some View {
+        VCard {
+            VStack(alignment: .leading, spacing: VSpace.sm) {
+                VCardHeader(title: "Health monitor",
+                            subtitle: h.outOfRange == 0 ? "All in your range" : "\(h.outOfRange) outside your range",
+                            tint: h.outOfRange == 0 ? VColor.recoveryHigh : VColor.recoveryMid, systemImage: "stethoscope")
+                ForEach(h.items) { item in
+                    HStack {
+                        Circle().fill(item.band == .outOfRange ? VColor.recoveryMid : VColor.recoveryHigh).frame(width: 8, height: 8)
+                        Text(item.title).font(.subheadline)
+                        Spacer()
+                        Text(item.value).font(.subheadline.weight(.semibold)).monospacedDigit()
+                        Text(item.band == .outOfRange ? "outside" : "typical")
+                            .font(.caption2).foregroundStyle(VColor.textTertiary).frame(width: 52, alignment: .trailing)
+                    }
+                    .padding(.vertical, 2)
+                }
+                Text("Ranges come from your own last 30 nights; not a diagnosis.")
+                    .font(.caption2).foregroundStyle(VColor.textTertiary)
+            }
+        }
     }
 
     // MARK: Cards
