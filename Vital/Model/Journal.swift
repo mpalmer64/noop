@@ -73,6 +73,18 @@ extension VitalModel {
         return out
     }
 
+    /// The questions to prompt each day: the user's own most-logged ones (WHOOP phrasing survives the
+    /// import), topped up with NOOP's defaults so a fresh install still has a list.
+    func journalQuestions() async -> [String] {
+        let entries = await journalEntries()
+        var counts: [String: Int] = [:]
+        for e in entries { counts[e.question, default: 0] += 1 }
+        let own = counts.filter { $0.value >= 5 }.sorted { $0.value > $1.value }.map(\.key)
+        var out = Array(own.prefix(10))
+        for q in VitalJournal.questions where out.count < 10 && !out.contains(q) { out.append(q) }
+        return out
+    }
+
     func answerJournal(day: String, question: String, yes: Bool) async {
         await repo.saveJournalAnswer(day: day, question: question, answeredYes: yes)
     }

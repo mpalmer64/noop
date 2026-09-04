@@ -8,6 +8,7 @@ struct JournalCard: View {
     @EnvironmentObject private var model: VitalModel
     let dayKey: String
     @State private var answers: [String: Bool] = [:]
+    @State private var questions: [String] = VitalJournal.questions
     @State private var showInsights = false
     @State private var expanded = false
 
@@ -15,9 +16,9 @@ struct JournalCard: View {
         VCard {
             VStack(alignment: .leading, spacing: VSpace.md) {
                 VCardHeader(title: "Journal",
-                            subtitle: answers.isEmpty ? "Not logged yet" : "\(answers.count) of \(VitalJournal.questions.count) answered",
+                            subtitle: answers.isEmpty ? "Not logged yet" : "\(answers.count) of \(questions.count) answered",
                             tint: VColor.sleep, systemImage: "book.closed.fill")
-                let shown = expanded ? VitalJournal.questions : Array(VitalJournal.questions.prefix(4))
+                let shown = expanded ? questions : Array(questions.prefix(4))
                 ForEach(shown, id: \.self) { q in
                     HStack {
                         Text(VitalJournal.shortLabel(q)).font(.subheadline)
@@ -26,7 +27,7 @@ struct JournalCard: View {
                     }
                 }
                 HStack {
-                    Button(expanded ? "Show fewer" : "All \(VitalJournal.questions.count) behaviours") { withAnimation { expanded.toggle() } }
+                    Button(expanded ? "Show fewer" : "All \(questions.count) behaviours") { withAnimation { expanded.toggle() } }
                         .font(.footnote.weight(.semibold))
                     Spacer()
                     Button { showInsights = true } label: {
@@ -36,7 +37,10 @@ struct JournalCard: View {
                 .buttonStyle(.plain).foregroundStyle(VColor.hrv)
             }
         }
-        .task(id: dayKey) { answers = await model.journalAnswers(day: dayKey) }
+        .task(id: dayKey) {
+            questions = await model.journalQuestions()
+            answers = await model.journalAnswers(day: dayKey)
+        }
         .sheet(isPresented: $showInsights) { JournalInsightsSheet() }
     }
 
