@@ -127,11 +127,11 @@ struct TrendsScreen: View {
                 AreaMark(x: .value("Day", p.date), yStart: .value("lo", lo), yEnd: .value("v", p.value))
                     .foregroundStyle(LinearGradient(colors: [tint.opacity(0.25), tint.opacity(0)],
                                                     startPoint: .top, endPoint: .bottom))
-                    .interpolationMethod(.catmullRom)
+                    .interpolationMethod(.monotone)
                 LineMark(x: .value("Day", p.date), y: .value("v", p.value))
                     .foregroundStyle(tint)
                     .lineStyle(StrokeStyle(lineWidth: 2.2, lineCap: .round))
-                    .interpolationMethod(.catmullRom)
+                    .interpolationMethod(.monotone)
                 if colorByBand {
                     PointMark(x: .value("Day", p.date), y: .value("v", p.value))
                         .foregroundStyle(VColor.recovery(p.value))

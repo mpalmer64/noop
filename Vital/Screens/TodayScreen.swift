@@ -98,7 +98,7 @@ struct TodayScreen: View {
         VCard(padding: VSpace.xl) {
             VStack(spacing: VSpace.lg) {
                 HStack {
-                    Text(day.map { VFormat.dayLabel($0.day) } ?? "Today")
+                    Text(day.map { headerLabel($0.day) } ?? "Today")
                         .font(VFont.title)
                     Spacer()
                     if model.isScoring {
@@ -238,6 +238,13 @@ struct TodayScreen: View {
             Text(VFormat.hoursMinutes(minutes)).font(.caption.weight(.semibold)).monospacedDigit()
         }
         .padding(.trailing, VSpace.sm)
+    }
+
+    /// The tab is already called Today, so the card says the date instead of repeating it.
+    private func headerLabel(_ key: String) -> String {
+        guard let d = VFormat.date(fromKey: key) else { return key }
+        if Calendar.current.isDateInToday(d) { return d.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()) }
+        return VFormat.dayLabel(key)
     }
 
     private func isRecent(_ key: String) -> Bool {

@@ -6,6 +6,8 @@ struct NowScreen: View {
     @EnvironmentObject private var model: VitalModel
     @ObservedObject private var live: LiveState
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 88
 
     init(live: LiveState) { self.live = live }
 
@@ -50,14 +52,17 @@ struct NowScreen: View {
                     Image(systemName: "heart.fill")
                         .font(.title)
                         .foregroundStyle(VColor.heart)
-                        .symbolEffect(.pulse, options: .repeating, isActive: model.bpm != nil)
+                        // Bounce on each new reading: feedback tied to data, not a decorative loop.
+                        .symbolEffect(.bounce, options: .nonRepeating, value: reduceMotion ? 0 : (model.bpm ?? 0))
                         .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 14 }
                     Text(model.bpm.map(String.init) ?? "--")
-                        .font(VFont.hero)
+                        .font(VFont.hero(heroSize))
                         .monospacedDigit()
+                        .lineLimit(1).minimumScaleFactor(0.5)
                         .foregroundStyle(model.bpm == nil ? VColor.textTertiary : VColor.textPrimary)
                         .contentTransition(.numericText())
-                        .animation(.snappy, value: model.bpm)
+                        // Changes every second: near-imperceptible only.
+                        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: model.bpm)
                     Text("bpm").font(.title3.weight(.medium)).foregroundStyle(VColor.textSecondary)
                 }
                 .frame(maxWidth: .infinity)

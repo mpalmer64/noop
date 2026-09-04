@@ -65,13 +65,13 @@ enum VitalBand {
 }
 
 enum VFont {
-    /// Hero numeral (live BPM, ring centre on Today).
-    static let hero = Font.system(size: 88, weight: .semibold, design: .rounded)
-    /// Card headline numeral.
-    static let display = Font.system(size: 40, weight: .semibold, design: .rounded)
+    /// Hero numeral (live BPM). Sized at the call site through `@ScaledMetric` so it follows Dynamic Type.
+    static func hero(_ size: CGFloat) -> Font { .system(size: size, weight: .semibold, design: .rounded) }
+    /// Card headline numeral. Text styles, not fixed sizes, so the user's text-size setting is honoured.
+    static let display = Font.system(.largeTitle, design: .rounded, weight: .semibold)
     /// Tile numeral.
-    static let stat = Font.system(size: 26, weight: .semibold, design: .rounded)
-    static let statSmall = Font.system(size: 20, weight: .semibold, design: .rounded)
+    static let stat = Font.system(.title2, design: .rounded, weight: .semibold)
+    static let statSmall = Font.system(.title3, design: .rounded, weight: .semibold)
     static let title = Font.title2.weight(.semibold)
     static let cardTitle = Font.subheadline.weight(.semibold)
     static let body = Font.body

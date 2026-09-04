@@ -33,6 +33,9 @@ struct SettingsScreen: View {
             }
         }
         .presentationDragIndicator(.visible)
+        .sensoryFeedback(.success, trigger: model.importStatus) { _, new in
+            if case .done = new { return true } else { return false }
+        }
     }
 
     // MARK: Sections

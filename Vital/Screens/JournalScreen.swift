@@ -27,7 +27,9 @@ struct JournalCard: View {
                     }
                 }
                 HStack {
-                    Button(expanded ? "Show fewer" : "All \(questions.count) behaviours") { withAnimation { expanded.toggle() } }
+                    Button(expanded ? "Show fewer" : "All \(questions.count) behaviours") {
+                        withAnimation(.easeOut(duration: 0.2)) { expanded.toggle() }
+                    }
                         .font(.footnote.weight(.semibold))
                     Spacer()
                     Button { showInsights = true } label: {
@@ -41,6 +43,7 @@ struct JournalCard: View {
             questions = await model.journalQuestions()
             answers = await model.journalAnswers(day: dayKey)
         }
+        .sensoryFeedback(.selection, trigger: answers)
         .sheet(isPresented: $showInsights) { JournalInsightsSheet() }
     }
 
@@ -55,10 +58,12 @@ struct JournalCard: View {
         Button(action: action) {
             Text(text).font(.caption.weight(.semibold))
                 .foregroundStyle(selected ? Color.white : tint)
-                .padding(.horizontal, 12).padding(.vertical, 6)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 34)
                 .background(selected ? tint : tint.opacity(0.14), in: Capsule())
+                .padding(.vertical, 5)   // reaches the 44 pt hit target without a taller pill
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.vPress)
     }
 
     private func set(_ q: String, _ yes: Bool) {

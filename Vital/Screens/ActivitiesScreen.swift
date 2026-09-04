@@ -41,7 +41,7 @@ struct ActivitiesScreen: View {
                     VSectionTitle(text: VFormat.dayLabel(group.day))
                     ForEach(group.rows) { row in
                         Button { detail = row } label: { ActivityRow(row: row) }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.vPress)
                     }
                 }
                 Text("Detected activities come from the strap's banked heart rate and motion after each offload; they carry a “Detected” badge.")
@@ -54,6 +54,7 @@ struct ActivitiesScreen: View {
         }
         .sheet(isPresented: $showLogSheet) { LogActivitySheet() }
         .sheet(item: $detail) { row in ActivityDetailSheet(row: row) }
+        .sensoryFeedback(.success, trigger: model.workouts.count) { old, new in new > old }
         .task { await model.reloadWorkouts() }
     }
 

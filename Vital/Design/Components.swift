@@ -47,6 +47,7 @@ struct VRing: View {
     let tint: Color
     var lineWidth: CGFloat = 12
     var sweep: Double = 270
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -60,7 +61,8 @@ struct VRing: View {
                                     endAngle: .degrees(VArc.startAngle(sweep) + sweep)),
                     style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .opacity(progress == nil ? 0 : 1)
-                .animation(.spring(response: 0.8, dampingFraction: 0.85), value: progress)
+                // Critically damped (no overshoot): a score is data, not a toy. Off under Reduce Motion.
+                .animation(reduceMotion ? nil : .spring(response: 0.45, dampingFraction: 1.0), value: progress)
         }
         .padding(lineWidth / 2)
     }
@@ -107,6 +109,7 @@ struct VScoreRing: View {
                     Text(value)
                         .font(.system(size: size * 0.30, weight: .semibold, design: .rounded))
                         .monospacedDigit()
+                        .lineLimit(1).minimumScaleFactor(0.6)
                         .foregroundStyle(progress == nil ? VColor.textTertiary : VColor.textPrimary)
                         .contentTransition(.numericText())
                     if let unit {
@@ -173,14 +176,15 @@ struct VSparkline: View {
 
     var body: some View {
         Chart(Array(values.enumerated()), id: \.offset) { i, v in
+            // Monotone, not Catmull-Rom: a smoothing curve must never overshoot a real reading.
             AreaMark(x: .value("i", i), yStart: .value("min", lo), yEnd: .value("v", v))
                 .foregroundStyle(LinearGradient(colors: [tint.opacity(0.28), tint.opacity(0)],
                                                 startPoint: .top, endPoint: .bottom))
-                .interpolationMethod(.catmullRom)
+                .interpolationMethod(.monotone)
             LineMark(x: .value("i", i), y: .value("v", v))
                 .foregroundStyle(tint)
                 .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round))
-                .interpolationMethod(.catmullRom)
+                .interpolationMethod(.monotone)
             if showsLast, i == values.count - 1 {
                 PointMark(x: .value("i", i), y: .value("v", v)).foregroundStyle(tint).symbolSize(30)
             }
@@ -341,4 +345,23 @@ struct VSectionTitle: View {
             .padding(.horizontal, VSpace.xs)
             .padding(.top, VSpace.sm)
     }
+}
+
+// MARK: Press feedback
+
+/// Pressable rows, pills and cards: highlight on touch-down, 0.97 scale, 120 ms ease-out, no bounce.
+/// System button styles already do this; `.plain` buttons do not, so every custom tappable uses this.
+struct VPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .contentShape(Rectangle())
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.85 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == VPressStyle {
+    static var vPress: VPressStyle { VPressStyle() }
 }
