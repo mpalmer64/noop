@@ -531,6 +531,24 @@ targets:
       - path: Strand/System/HealthSyncStats.swift
       - path: Strand/System/FileExport.swift
       - path: Strand/Data/InactivityPrefs.swift
+      # Option (a) from the build spec: compile NOOP's read model + scoring orchestrator so Vital's
+      # numbers are byte-identical to NOOP's. Repository/IntelligenceEngine/ProfileStore plus the
+      # leaf files they call. Three cache structs and one image helper that upstream parked inside
+      # Screens files are shimmed in Vital/Compat/UpstreamShims.swift rather than dragging views in.
+      - path: Strand/Data/Repository.swift
+      - path: Strand/Data/IntelligenceEngine.swift
+      - path: Strand/Data/Profile.swift
+      - path: Strand/Data/WhoopImporter.swift
+      - path: Strand/Data/Units.swift
+      - path: Strand/Data/MetricCatalog.swift
+      - path: Strand/Data/WorkoutSource.swift
+      - path: Strand/Data/WorkoutCatalog.swift
+      - path: Strand/Data/WidgetAnchorMemo.swift
+      - path: Strand/Data/RescoreBackgroundPolicy.swift
+      - path: Strand/Data/DeviceRegistry.swift
+      - path: Strand/System/RescoreBackgroundScheduler.swift
+      - path: Strand/System/Platform.swift
+      - path: Strand/App/GpsWorkoutRecorder.swift
     info:
       path: Vital/Resources/Info.plist
       properties:
@@ -562,6 +580,10 @@ targets:
       # LiveState imports OuraProtocol (OuraWearState); FileExport imports ZIPFoundation.
       - package: OuraProtocol
       - package: ZIPFoundation
+      # Repository imports StrandDesign for the TrendPoint struct only. Vital's UI must not use its
+      # palette/components (spec rule: no NOOP views, no NOOP design tokens in Vital/).
+      - package: StrandDesign
+      - package: StrandImport
 
 # Explicit schemes so `xcodebuild -scheme Strand …` builds + tests the macOS app (with StrandTests
 # wired in) and `-scheme NOOPiOS …` builds the iOS app. Names match the app-build CI matrix.
