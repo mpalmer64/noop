@@ -20,6 +20,7 @@ struct VitalRootView: View {
     /// Debug affordance: `VITAL_TAB=today|sleep|trends` in the launch environment preselects a tab so a
     /// headless simulator run can screenshot every screen. Inert in normal use.
     @State private var tab: Tab = Tab(rawValue: ProcessInfo.processInfo.environment["VITAL_TAB"] ?? "") ?? .now
+    @State private var showSettings = ProcessInfo.processInfo.environment["VITAL_TAB"] == "settings"
 
     enum Tab: String { case now, today, sleep, trends }
 
@@ -35,6 +36,7 @@ struct VitalRootView: View {
                 .tabItem { Label("Trends", systemImage: "chart.xyaxis.line") }.tag(Tab.trends)
         }
         .tint(VColor.textPrimary)
+        .sheet(isPresented: $showSettings) { SettingsScreen() }
     }
 }
 

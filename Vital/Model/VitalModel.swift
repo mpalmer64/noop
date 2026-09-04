@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import StrandAnalytics
+import UserNotifications
 import StrandImport
 import WhoopProtocol
 import WhoopStore
@@ -242,6 +243,25 @@ final class VitalModel: ObservableObject {
                                computedAt: now,
                                importedDays: repo.freshness.importedDays,
                                computedDays: repo.freshness.computedDays)
+        publishSnapshot()
+        VitalNotifications.morningRecoveryIfDue(anchor: anchor, todayKey: todayKey)
+    }
+
+    /// Glance for the widget extension. Runs from the derived tick (≤ 1/min), NOOP's precedent for
+    /// anything outside the foreground; `VitalSnapshot.publish` skips the WidgetKit reload when nothing
+    /// rendered changed.
+    private func publishSnapshot() {
+        let a = derived.anchor
+        VitalSnapshot.publish(VitalSnapshot(
+            recovery: a?.recovery.map { Int($0.rounded()) },
+            strain: (a?.strain ?? derived.liveStrain).map { Int($0.rounded()) },
+            rest: derived.restScore.map { Int($0.rounded()) },
+            hrv: a?.avgHrv.map { Int($0.rounded()) },
+            restingHr: a?.restingHr,
+            bpm: bpm ?? live.heartRate,
+            batteryPct: live.batteryPct.map { Int($0.rounded()) },
+            connected: live.connected,
+            dayKey: a?.day))
     }
 
     // MARK: Import
@@ -329,4 +349,40 @@ enum VitalImportStatus: Equatable {
     case importing
     case done(cycles: Int, sleeps: Int, workouts: Int, at: Date)
     case failed(String)
+}
+
+// MARK: - Local notifications (no server)
+
+enum VitalNotifications {
+    static let morningAlertKey = "vital.morningAlert"
+    private static let lastNotifiedDayKey = "vital.morningAlert.lastDay"
+
+    /// Ask once; the Settings toggle drives this.
+    static func requestPermission() async -> Bool {
+        (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) ?? false
+    }
+
+    /// Fire "your recovery is in" the first time today's score exists, once per day, only if enabled.
+    /// Runs from the derived tick, so it lands minutes after the morning offload is scored.
+    static func morningRecoveryIfDue(anchor: DailyMetric?, todayKey: String) {
+        let d = UserDefaults.standard
+        guard d.bool(forKey: morningAlertKey),
+              let anchor, anchor.day == todayKey, let r = anchor.recovery,
+              d.string(forKey: lastNotifiedDayKey) != todayKey else { return }
+        d.set(todayKey, forKey: lastNotifiedDayKey)
+        let content = UNMutableNotificationContent()
+        let pct = Int(r.rounded())
+        content.title = "Recovery \(pct)%"
+        switch VitalBand.recovery(r) {
+        case .low: content.body = "Your body is asking for an easy day."
+        case .mid: content.body = "Ready for a moderate day."
+        case .high: content.body = "Well recovered. Good day to push."
+        }
+        if let hrv = anchor.avgHrv, let rhr = anchor.restingHr {
+            content.subtitle = "HRV \(Int(hrv.rounded())) ms · RHR \(rhr) bpm"
+        }
+        content.sound = .default
+        UNUserNotificationCenter.current().add(
+            UNNotificationRequest(identifier: "vital.morning.\(todayKey)", content: content, trigger: nil))
+    }
 }

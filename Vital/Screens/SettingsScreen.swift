@@ -7,6 +7,7 @@ struct SettingsScreen: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showImporter = false
     @AppStorage(VitalAppearance.key) private var appearance: VitalAppearance = .dark
+    @AppStorage(VitalNotifications.morningAlertKey) private var morningAlert = false
 
     var body: some View {
         NavigationStack {
@@ -98,6 +99,11 @@ struct SettingsScreen: View {
             Picker("Appearance", selection: $appearance) {
                 ForEach(VitalAppearance.allCases) { a in Text(a.label).tag(a) }
             }
+            Toggle("Morning recovery alert", isOn: $morningAlert)
+                .onChange(of: morningAlert) { _, on in
+                    guard on else { return }
+                    Task { if await !VitalNotifications.requestPermission() { morningAlert = false } }
+                }
             LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
             NavigationLink("Licence & attribution") { NoticesScreen() }
         } header: { Text("About") } footer: {
@@ -158,7 +164,9 @@ private struct ProfileSection: View {
             HStack {
                 Text("Max heart rate")
                 Spacer()
-                TextField("auto", value: $profile.hrMaxOverride, format: .number)
+                TextField("auto", value: Binding<Int?>(
+                    get: { profile.hrMaxOverride > 0 ? profile.hrMaxOverride : nil },
+                    set: { profile.hrMaxOverride = $0 ?? 0 }), format: .number)
                     .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 90)
                 Text("bpm").foregroundStyle(VColor.textTertiary)
             }
