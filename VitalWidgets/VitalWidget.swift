@@ -54,38 +54,35 @@ struct VitalWidgetView: View {
 
     // MARK: Home screen
 
-    /// Three rings (recovery, strain, sleep) to one decimal, HRV/RHR beneath, live BPM when connected.
+    /// Three rings and the date line, nothing else. Recovery and sleep as whole numbers, strain to tenths.
     private var small: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 6) {
-                ring("Recovery", tenths(s?.recovery), s?.recovery.map { $0 / 100 }, VColor.recovery(s?.recovery), size: 42)
-                ring("Strain", strainText, s?.strain.map { min(1, $0 / 100) }, VColor.strain, size: 42)
-                ring("Sleep", tenths(s?.rest), s?.rest.map { $0 / 100 }, VColor.sleep, size: 42)
+            Spacer(minLength: 0)
+            HStack(spacing: 8) {
+                ring("Recovery", whole(s?.recovery), s?.recovery.map { $0 / 100 }, VColor.recovery(s?.recovery), size: 46)
+                ring("Strain", strainText, s?.strain.map { min(1, $0 / 100) }, VColor.strain, size: 46)
+                ring("Sleep", whole(s?.rest), s?.rest.map { $0 / 100 }, VColor.sleep, size: 46)
             }
             .frame(maxWidth: .infinity)
-            Spacer(minLength: 4)
-            HStack(spacing: 8) {
-                stat("HRV", tenths(s?.hrv), VColor.hrv)
-                stat("RHR", s?.restingHr.map(String.init) ?? "--", VColor.rhr)
-                Spacer(minLength: 2)
+            Spacer(minLength: 0)
+            HStack {
+                footer
                 if let bpm = s?.bpm, s?.connected == true {
                     HStack(spacing: 2) {
                         Image(systemName: "heart.fill").font(.system(size: 8))
-                        Text("\(bpm)").font(.caption2.weight(.semibold)).monospacedDigit()
+                        Text("\(bpm)").font(.system(size: 9, weight: .semibold)).monospacedDigit()
                     }
-                    .foregroundStyle(VColor.heart)
+                    .foregroundStyle(VColor.heart).fixedSize()
                 }
             }
-            Spacer(minLength: 3)
-            footer
         }
     }
 
     private var medium: some View {
         HStack(spacing: 14) {
-            ring("Recovery", tenths(s?.recovery), s?.recovery.map { $0 / 100 }, VColor.recovery(s?.recovery))
+            ring("Recovery", whole(s?.recovery), s?.recovery.map { $0 / 100 }, VColor.recovery(s?.recovery))
             ring("Strain", strainText, s?.strain.map { min(1, $0 / 100) }, VColor.strain)
-            ring("Sleep", tenths(s?.rest), s?.rest.map { $0 / 100 }, VColor.sleep)
+            ring("Sleep", whole(s?.rest), s?.rest.map { $0 / 100 }, VColor.sleep)
             VStack(alignment: .leading, spacing: 5) {
                 line("HRV", tenths(s?.hrv) + " ms", VColor.hrv)
                 line("RHR", s?.restingHr.map { "\($0) bpm" } ?? "--", VColor.rhr)
@@ -118,9 +115,9 @@ struct VitalWidgetView: View {
                 Image(systemName: "heart.fill").font(.caption2)
                 Text("Vital").font(.caption.weight(.semibold))
             }
-            Text("Recovery \(tenths(s?.recovery))%  ·  Strain \(strainText)")
+            Text("Recovery \(whole(s?.recovery))%  ·  Strain \(strainText)")
                 .font(.caption2).monospacedDigit()
-            Text("Sleep \(tenths(s?.rest))%  ·  HRV \(tenths(s?.hrv))  ·  RHR \(s?.restingHr.map(String.init) ?? "--")")
+            Text("Sleep \(whole(s?.rest))%  ·  HRV \(tenths(s?.hrv))  ·  RHR \(s?.restingHr.map(String.init) ?? "--")")
                 .font(.caption2).monospacedDigit().foregroundStyle(.secondary)
         }
     }
@@ -128,6 +125,7 @@ struct VitalWidgetView: View {
     // MARK: Pieces
 
     private func tenths(_ v: Double?) -> String { v.map { String(format: "%.1f", $0) } ?? "--" }
+    private func whole(_ v: Double?) -> String { v.map { "\(Int($0.rounded()))" } ?? "--" }
 
     private var strainText: String { tenths(s?.strain.map { $0 * 21 / 100 }) }
 
@@ -172,6 +170,7 @@ struct VitalWidgetView: View {
         Text(footerText).font(.system(size: 9)).foregroundStyle(VColor.textTertiary)
             .lineLimit(1).minimumScaleFactor(0.85).frame(maxWidth: .infinity, alignment: .leading)
     }
+
 
     private var footerText: String {
         guard let s, s.updated != .distantPast else { return "Open Vital to sync" }
