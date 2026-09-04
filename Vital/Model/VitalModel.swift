@@ -34,6 +34,13 @@ final class VitalModel: ObservableObject {
     @Published private(set) var derived = VitalDerived()
     @Published private(set) var importStatus: VitalImportStatus = .idle
     @Published private(set) var isScoring = false
+    /// Workout in progress (see Activities.swift) and its live-computed numbers.
+    @Published var activity: ActiveActivity?
+    @Published var activityLive: ActivityLive?
+    @Published var workouts: [WorkoutRow] = []
+    /// Strain coach target for the anchor day (see Coach.swift); nil until a recovery exists.
+    var strainCoach: StrainCoach? { StrainCoach(recovery: derived.anchor?.recovery) }
+    var lastCoachZone = -1
 
     var isWhoop5: Bool { ble.isWhoop5 }
 
@@ -65,11 +72,21 @@ final class VitalModel: ObservableObject {
         live.$heartRate.sink { [weak self] _ in self?.ingestHR() }.store(in: &cancellables)
         live.$rr.sink { [weak self] _ in self?.ingestHR() }.store(in: &cancellables)
 
+        // Strap-side hooks: double-tap → haptic clock; BLE sedentary detector → buzz (via the AppModel shim).
+        live.onDoubleTap = { [weak self] in self?.handleDoubleTap() }
+        AppModel.onInactivity = { [weak self] _ in
+            guard VitalHaptics.enabled(VitalHaptics.moveReminderKey) else { return }
+            self?.buzz(loops: 1)
+        }
+
         // A bond that lands while a screen already wants live HR must re-arm the feed.
         live.$bonded
             .removeDuplicates()
             .filter { $0 }
-            .sink { [weak self] _ in self?.rearmRealtimeIfWanted() }
+            .sink { [weak self] _ in
+                self?.rearmRealtimeIfWanted()
+                self?.applyAlarm()
+            }
             .store(in: &cancellables)
 
         // Sync channel mirrors LiveState fields the UI cares about.
@@ -104,10 +121,16 @@ final class VitalModel: ObservableObject {
         started = true
         await repo.refresh()
         await recomputeDerived()
+        restoreActivityIfNeeded()
+        await reloadWorkouts()
         await seedFromBundleIfNeeded()
         await runScoring(force: false, skipIfUnchanged: false)
+        applyWindDown()
         derivedTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in await self?.recomputeDerived() }
+            Task { @MainActor [weak self] in
+                await self?.recomputeDerived()
+                self?.hapticTick()
+            }
         }
     }
 
@@ -184,7 +207,11 @@ final class VitalModel: ObservableObject {
         if hrWindow.count > 40 { hrWindow.removeFirst(hrWindow.count - 40) }
         let vals = hrWindow.map(\.v).sorted()
         let smoothed = vals.isEmpty ? nil : Int(vals[vals.count / 2].rounded())
-        if bpm != smoothed { bpm = smoothed }
+        if bpm != smoothed {
+            bpm = smoothed
+            captureActivitySample()
+            coachZone(smoothed)
+        }
     }
 
     private func resetSmoothing() {
@@ -244,7 +271,11 @@ final class VitalModel: ObservableObject {
                                importedDays: repo.freshness.importedDays,
                                computedDays: repo.freshness.computedDays)
         publishSnapshot()
-        VitalNotifications.morningRecoveryIfDue(anchor: anchor, todayKey: todayKey)
+        if VitalNotifications.morningRecoveryIfDue(anchor: anchor, todayKey: todayKey),
+           VitalHaptics.enabled(VitalHaptics.morningBuzzKey) {
+            buzz(loops: 2)
+        }
+        await reloadWorkouts()
     }
 
     /// Glance for the widget extension. Runs from the derived tick (≤ 1/min), NOOP's precedent for
@@ -364,12 +395,13 @@ enum VitalNotifications {
 
     /// Fire "your recovery is in" the first time today's score exists, once per day, only if enabled.
     /// Runs from the derived tick, so it lands minutes after the morning offload is scored.
-    static func morningRecoveryIfDue(anchor: DailyMetric?, todayKey: String) {
+    @discardableResult
+    static func morningRecoveryIfDue(anchor: DailyMetric?, todayKey: String) -> Bool {
         let d = UserDefaults.standard
-        guard d.bool(forKey: morningAlertKey),
-              let anchor, anchor.day == todayKey, let r = anchor.recovery,
-              d.string(forKey: lastNotifiedDayKey) != todayKey else { return }
+        guard let anchor, anchor.day == todayKey, let r = anchor.recovery,
+              d.string(forKey: lastNotifiedDayKey) != todayKey else { return false }
         d.set(todayKey, forKey: lastNotifiedDayKey)
+        guard d.bool(forKey: morningAlertKey) else { return true }
         let content = UNMutableNotificationContent()
         let pct = Int(r.rounded())
         content.title = "Recovery \(pct)%"
@@ -384,5 +416,27 @@ enum VitalNotifications {
         content.sound = .default
         UNUserNotificationCenter.current().add(
             UNNotificationRequest(identifier: "vital.morning.\(todayKey)", content: content, trigger: nil))
+        return true
+    }
+}
+
+/// WHOOP-style strain coach: a target strain band for the day from the recovery band. Vital's own
+/// mapping (display guidance, not a NOOP score): recovered → push, moderate → maintain, low → rest.
+struct StrainCoach: Equatable {
+    let recovery: Double
+    let band: VitalBand
+    /// On WHOOP's 0–21 scale.
+    let targetRange: ClosedRange<Double>
+    let headline: String
+
+    init?(recovery: Double?) {
+        guard let recovery else { return nil }
+        self.recovery = recovery
+        band = VitalBand.recovery(recovery)
+        switch band {
+        case .high: targetRange = 14.0...18.0; headline = "Push today"
+        case .mid: targetRange = 10.0...14.0; headline = "Moderate day"
+        case .low: targetRange = 4.0...9.0; headline = "Take it easy"
+        }
     }
 }

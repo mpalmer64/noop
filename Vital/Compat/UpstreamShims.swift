@@ -44,7 +44,11 @@ enum AppChangelog {
 /// Posts a local notification if the user has granted notification permission; silent otherwise.
 /// Vital does not request that permission in Phase 1, so this is effectively a no-op until it does.
 enum AppModel {
+    /// Vital installs a handler so the strap can buzz too (upstream buzzes from inside BLEManager).
+    static var onInactivity: ((Int) -> Void)?
+
     static func postInactivity(minutes: Int) {
+        onInactivity?(minutes)
         let content = UNMutableNotificationContent()
         content.title = "Move reminder"
         content.body = minutes > 0

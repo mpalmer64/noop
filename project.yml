@@ -531,6 +531,7 @@ targets:
       - path: Strand/System/HealthSyncStats.swift
       - path: Strand/System/FileExport.swift
       - path: Strand/Data/InactivityPrefs.swift
+      - path: Strand/Data/HapticPrefs.swift
       # Option (a) from the build spec: compile NOOP's read model + scoring orchestrator so Vital's
       # numbers are byte-identical to NOOP's. Repository/IntelligenceEngine/ProfileStore plus the
       # leaf files they call. Three cache structs and one image helper that upstream parked inside
@@ -558,6 +559,9 @@ targets:
         CFBundleVersion: "1"
         # Read at runtime by VitalSnapshot.suiteName; kept in lockstep with the entitlement below.
         AppGroupIdentifier: "$(VITAL_APP_GROUP_ID)"
+        # vital://friend?d=… links carry a friend's shared stats card (Leaderboard); no server involved.
+        CFBundleURLTypes:
+          - CFBundleURLSchemes: [vital]
         LSApplicationCategoryType: public.app-category.healthcare-fitness
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:

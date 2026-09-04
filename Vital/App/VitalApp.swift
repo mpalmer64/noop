@@ -22,7 +22,7 @@ struct VitalRootView: View {
     @State private var tab: Tab = Tab(rawValue: ProcessInfo.processInfo.environment["VITAL_TAB"] ?? "") ?? .now
     @State private var showSettings = ProcessInfo.processInfo.environment["VITAL_TAB"] == "settings"
 
-    enum Tab: String { case now, today, sleep, trends }
+    enum Tab: String { case now, today, sleep, activity, trends }
 
     var body: some View {
         TabView(selection: $tab) {
@@ -32,6 +32,8 @@ struct VitalRootView: View {
                 .tabItem { Label("Today", systemImage: "circle.circle") }.tag(Tab.today)
             NavigationStack { SleepScreen() }
                 .tabItem { Label("Sleep", systemImage: "moon.zzz.fill") }.tag(Tab.sleep)
+            NavigationStack { ActivitiesScreen() }
+                .tabItem { Label("Activity", systemImage: "figure.run") }.tag(Tab.activity)
             NavigationStack { TrendsScreen() }
                 .tabItem { Label("Trends", systemImage: "chart.xyaxis.line") }.tag(Tab.trends)
         }

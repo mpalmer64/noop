@@ -328,3 +328,17 @@ struct VScreen<Content: View>: View {
         .scrollIndicators(.hidden)
     }
 }
+
+struct VSectionTitle: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(VColor.textSecondary)
+            .textCase(.uppercase)
+            .tracking(0.6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, VSpace.xs)
+            .padding(.top, VSpace.sm)
+    }
+}

@@ -8,12 +8,14 @@ struct SettingsScreen: View {
     @State private var showImporter = false
     @AppStorage(VitalAppearance.key) private var appearance: VitalAppearance = .dark
     @AppStorage(VitalNotifications.morningAlertKey) private var morningAlert = false
+    @AppStorage(UnitPrefs.systemKey) private var unitSystemRaw = UnitSystem.imperial.rawValue
 
     var body: some View {
         NavigationStack {
             Form {
                 strapSection
                 profileSection
+                hapticsSection
                 dataSection
                 aboutSection
             }
@@ -55,6 +57,10 @@ struct SettingsScreen: View {
 
     private var profileSection: some View {
         ProfileSection(profile: model.profile)
+    }
+
+    private var hapticsSection: some View {
+        HapticsSection()
     }
 
     private var dataSection: some View {
@@ -99,6 +105,10 @@ struct SettingsScreen: View {
             Picker("Appearance", selection: $appearance) {
                 ForEach(VitalAppearance.allCases) { a in Text(a.label).tag(a) }
             }
+            Picker("Units", selection: $unitSystemRaw) {
+                Text("Imperial (lb, ft, °F, mi)").tag(UnitSystem.imperial.rawValue)
+                Text("Metric (kg, cm, °C, km)").tag(UnitSystem.metric.rawValue)
+            }
             Toggle("Morning recovery alert", isOn: $morningAlert)
                 .onChange(of: morningAlert) { _, on in
                     guard on else { return }
@@ -138,6 +148,8 @@ struct NoticesScreen: View {
 /// recovery use are the same ones NOOP would read.
 private struct ProfileSection: View {
     @ObservedObject var profile: ProfileStore
+    @AppStorage(UnitPrefs.systemKey) private var unitSystemRaw = UnitSystem.imperial.rawValue
+    private var imperial: Bool { unitSystemRaw != UnitSystem.metric.rawValue }
 
     var body: some View {
         Section {
@@ -150,16 +162,38 @@ private struct ProfileSection: View {
             HStack {
                 Text("Weight")
                 Spacer()
-                TextField("kg", value: $profile.weightKg, format: .number.precision(.fractionLength(0...1)))
+                TextField(imperial ? "lb" : "kg", value: Binding<Double>(
+                    get: { imperial ? (UnitFormatter.kgToPounds(profile.weightKg) * 10).rounded() / 10 : profile.weightKg },
+                    set: { profile.weightKg = imperial ? $0 / UnitFormatter.poundsPerKilogram : $0 }),
+                    format: .number.precision(.fractionLength(0...1)))
                     .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(width: 90)
-                Text("kg").foregroundStyle(VColor.textTertiary)
+                Text(imperial ? "lb" : "kg").foregroundStyle(VColor.textTertiary)
             }
-            HStack {
-                Text("Height")
-                Spacer()
-                TextField("cm", value: $profile.heightCm, format: .number.precision(.fractionLength(0)))
-                    .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 90)
-                Text("cm").foregroundStyle(VColor.textTertiary)
+            if imperial {
+                HStack {
+                    Text("Height")
+                    Spacer()
+                    TextField("ft", value: Binding<Int>(
+                        get: { UnitFormatter.cmToFeetInches(profile.heightCm).feet },
+                        set: { profile.heightCm = VitalUnits.cm(feet: $0, inches: UnitFormatter.cmToFeetInches(profile.heightCm).inches) }),
+                        format: .number)
+                        .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 44)
+                    Text("ft").foregroundStyle(VColor.textTertiary)
+                    TextField("in", value: Binding<Int>(
+                        get: { UnitFormatter.cmToFeetInches(profile.heightCm).inches },
+                        set: { profile.heightCm = VitalUnits.cm(feet: UnitFormatter.cmToFeetInches(profile.heightCm).feet, inches: min(11, max(0, $0))) }),
+                        format: .number)
+                        .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 44)
+                    Text("in").foregroundStyle(VColor.textTertiary)
+                }
+            } else {
+                HStack {
+                    Text("Height")
+                    Spacer()
+                    TextField("cm", value: $profile.heightCm, format: .number.precision(.fractionLength(0)))
+                        .keyboardType(.numberPad).multilineTextAlignment(.trailing).frame(width: 90)
+                    Text("cm").foregroundStyle(VColor.textTertiary)
+                }
             }
             HStack {
                 Text("Max heart rate")
@@ -173,5 +207,56 @@ private struct ProfileSection: View {
         } header: { Text("Profile") } footer: {
             Text("Strain uses your max heart rate (\(profile.hrMax) bpm, \(profile.hrMaxOverride > 0 ? "set by you" : "estimated from age")). Recovery and sleep need a few nights of history to calibrate.")
         }
+    }
+}
+
+/// Every way the strap can buzz, each its own switch. Nothing here fires unless the strap is bonded.
+private struct HapticsSection: View {
+    @EnvironmentObject private var model: VitalModel
+    @AppStorage(VitalHaptics.moveReminderKey) private var move = true
+    @AppStorage(VitalHaptics.zoneCoachingKey) private var zones = true
+    @AppStorage(VitalHaptics.morningBuzzKey) private var morning = true
+    @AppStorage(VitalHaptics.strainTargetKey) private var strainTarget = true
+    @AppStorage(VitalHaptics.hapticClockKey) private var clock = false
+    @AppStorage(HapticPrefs.workout) private var workoutBuzz = true
+    @AppStorage(VitalHaptics.alarmEnabledKey) private var alarmOn = false
+    @AppStorage(VitalHaptics.alarmMinutesKey) private var alarmMinutes = 7 * 60
+    @AppStorage(VitalHaptics.windDownEnabledKey) private var windDownOn = false
+    @AppStorage(VitalHaptics.windDownMinutesKey) private var windDownMinutes = 22 * 60 + 30
+    @AppStorage("inactivity.enabled") private var inactivityDetector = false
+    @AppStorage("notif.masterEnabled") private var notifMaster = false
+
+    var body: some View {
+        Section {
+            Toggle("Move reminder", isOn: Binding(
+                get: { move && inactivityDetector },
+                set: { on in move = on; inactivityDetector = on; if on { notifMaster = true } }))
+            Toggle("Zone coaching during activities", isOn: $zones)
+            Toggle("Activity start / stop", isOn: $workoutBuzz)
+            Toggle("Recovery is in (morning)", isOn: $morning)
+            Toggle("Strain target reached", isOn: $strainTarget)
+            Toggle("Double-tap taps the time", isOn: $clock)
+            Toggle("Strap alarm", isOn: $alarmOn)
+                .onChange(of: alarmOn) { _, _ in model.applyAlarm() }
+            if alarmOn {
+                DatePicker("Wake time", selection: minutesBinding($alarmMinutes), displayedComponents: .hourAndMinute)
+                    .onChange(of: alarmMinutes) { _, _ in model.applyAlarm() }
+            }
+            Toggle("Wind-down reminder", isOn: $windDownOn)
+                .onChange(of: windDownOn) { _, _ in model.applyWindDown() }
+            if windDownOn {
+                DatePicker("In bed by", selection: minutesBinding($windDownMinutes), displayedComponents: .hourAndMinute)
+                    .onChange(of: windDownMinutes) { _, _ in model.applyWindDown() }
+            }
+            Button("Test buzz") { model.buzz(loops: 1) }.disabled(!model.live.bonded)
+        } header: { Text("Strap haptics") } footer: {
+            Text("Move reminder uses the strap's motion to spot long sitting. Zone coaching buzzes three times entering zone 5 and once dropping back to zone 1. The alarm runs on the strap itself and fires even if the phone is out of reach; a notification backs it up.")
+        }
+    }
+
+    private func minutesBinding(_ minutes: Binding<Int>) -> Binding<Date> {
+        Binding(
+            get: { Calendar.current.date(bySettingHour: minutes.wrappedValue / 60, minute: minutes.wrappedValue % 60, second: 0, of: Date()) ?? Date() },
+            set: { d in minutes.wrappedValue = Calendar.current.component(.hour, from: d) * 60 + Calendar.current.component(.minute, from: d) })
     }
 }

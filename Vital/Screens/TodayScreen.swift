@@ -98,11 +98,11 @@ struct TodayScreen: View {
                 // On-device rows store a deviation from baseline; a WHOOP export row stores the absolute
                 // reading (WhoopImporter notes this). Anything above 20 cannot be a deviation.
                 if t > 20 {
-                    VStatTile(title: "Skin temp", value: String(format: "%.1f", t), unit: "°C",
+                    VStatTile(title: "Skin temp", value: VitalUnits.temperature(celsius: t),
                               tint: VColor.temperature, systemImage: "thermometer.medium",
                               footnote: "Absolute reading from the WHOOP export")
                 } else {
-                    VStatTile(title: "Skin temp", value: String(format: "%+.1f", t), unit: "°C vs baseline",
+                    VStatTile(title: "Skin temp", value: VitalUnits.temperatureDelta(celsius: t), unit: "vs baseline",
                               tint: VColor.temperature, systemImage: "thermometer.medium",
                               footnote: abs(t) < 0.3 ? "Within your normal range" : "Outside your normal range")
                 }
