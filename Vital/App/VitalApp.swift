@@ -28,6 +28,7 @@ struct VitalRootView: View {
     @State private var tab: Tab = Tab(rawValue: ProcessInfo.processInfo.environment["VITAL_TAB"] ?? "") ?? .now
     @State private var showSettings = ProcessInfo.processInfo.environment["VITAL_TAB"] == "settings"
     @State private var showFriends = ProcessInfo.processInfo.environment["VITAL_TAB"] == "friends"
+    @State private var showJournal = ProcessInfo.processInfo.environment["VITAL_TAB"] == "journal"
 
     enum Tab: String { case now, today, sleep, activity, trends }
 
@@ -47,6 +48,7 @@ struct VitalRootView: View {
         .tint(VColor.textPrimary)
         .sheet(isPresented: $showSettings) { SettingsScreen() }
         .sheet(isPresented: $showFriends) { NavigationStack { LeaderboardScreen() } }
+        .sheet(isPresented: $showJournal) { JournalInsightsSheet() }
     }
 }
 

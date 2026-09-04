@@ -24,6 +24,7 @@ struct TodayScreen: View {
                 vitalsGrid
                 if let h = d.health { healthCard(h) }
                 sleepCard
+                JournalCard(dayKey: day?.day ?? Repository.localDayKey(Date()))
                 if let day, day.steps != nil || day.activeKcalEst != nil { activityCard(day) }
             }
             VAsOf(dayKey: day?.day, computedAt: d.computedAt)
