@@ -5,6 +5,7 @@ import SwiftUI
 struct NowView: View {
     @EnvironmentObject private var model: VitalModel
     @ObservedObject private var live: LiveState
+    @Environment(\.scenePhase) private var scenePhase
 
     init(live: LiveState) { self.live = live }
 
@@ -54,6 +55,13 @@ struct NowView: View {
             }
         }
         .padding(.bottom)
+        // Ask for the live feed while this screen is up; drop it when not. Coming back to the
+        // foreground re-arms it in case the link was rebuilt while backgrounded.
+        .onAppear { model.startRealtimeHR() }
+        .onDisappear { model.stopRealtimeHR() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { model.rearmRealtimeIfWanted() }
+        }
     }
 
     private var status: String {
