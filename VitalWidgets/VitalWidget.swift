@@ -64,10 +64,10 @@ struct VitalWidgetView: View {
             }
             .frame(maxWidth: .infinity)
             Spacer(minLength: 4)
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 stat("HRV", tenths(s?.hrv), VColor.hrv)
                 stat("RHR", s?.restingHr.map(String.init) ?? "--", VColor.rhr)
-                Spacer(minLength: 0)
+                Spacer(minLength: 2)
                 if let bpm = s?.bpm, s?.connected == true {
                     HStack(spacing: 2) {
                         Image(systemName: "heart.fill").font(.system(size: 8))
@@ -150,7 +150,7 @@ struct VitalWidgetView: View {
     private func stat(_ label: String, _ value: String, _ tint: Color) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 3) {
             Circle().fill(tint).frame(width: 4, height: 4).alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 2.5 }
-            Text(label).font(.system(size: 9)).foregroundStyle(VColor.textSecondary)
+            Text(label).font(.system(size: 9)).foregroundStyle(VColor.textSecondary).lineLimit(1).fixedSize()
             Text(value).font(.system(size: 10, weight: .semibold)).monospacedDigit().lineLimit(1).fixedSize()
         }
     }
