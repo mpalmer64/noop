@@ -218,6 +218,7 @@ private struct HapticsSection: View {
     @AppStorage(VitalHaptics.morningBuzzKey) private var morning = true
     @AppStorage(VitalHaptics.strainTargetKey) private var strainTarget = true
     @AppStorage(VitalHaptics.hapticClockKey) private var clock = false
+    @AppStorage(VitalHaptics.clockStyleKey) private var clockStyle = "simple"
     @AppStorage(HapticPrefs.workout) private var workoutBuzz = true
     @AppStorage(VitalHaptics.alarmEnabledKey) private var alarmOn = false
     @AppStorage(VitalHaptics.alarmMinutesKey) private var alarmMinutes = 7 * 60
@@ -236,6 +237,16 @@ private struct HapticsSection: View {
             Toggle("Recovery is in (morning)", isOn: $morning)
             Toggle("Strain target reached", isOn: $strainTarget)
             Toggle("Double-tap taps the time", isOn: $clock)
+            if clock {
+                Picker("Clock style", selection: $clockStyle) {
+                    Text("Simple (hours, then quarters)").tag("simple")
+                    Text("Digits (tens long, units short)").tag("digits")
+                }
+                Button("Buzz the time now") {
+                    clockStyle == "digits" ? model.ble.buzzTimeNow(is24h: false) : model.buzzTimeSimple()
+                }
+                .disabled(!model.live.bonded)
+            }
             Toggle("Strap alarm", isOn: $alarmOn)
                 .onChange(of: alarmOn) { _, _ in model.applyAlarm() }
             if alarmOn {
@@ -250,7 +261,7 @@ private struct HapticsSection: View {
             }
             Button("Test buzz") { model.buzz(loops: 1) }.disabled(!model.live.bonded)
         } header: { Text("Strap haptics") } footer: {
-            Text("Move reminder uses the strap's motion to spot long sitting. Zone coaching buzzes three times entering zone 5 and once dropping back to zone 1. The alarm runs on the strap itself and fires even if the phone is out of reach; a notification backs it up.")
+            Text("Move reminder uses the strap's motion to spot long sitting. Zone coaching buzzes three times entering zone 5 and once dropping back to zone 1. Simple clock: one buzz per hour (12 at twelve), a pause, then a double-buzz per quarter hour — 4:35 is four singles, pause, two doubles. The alarm runs on the strap itself and fires even if the phone is out of reach; a notification backs it up.")
         }
     }
 

@@ -14,6 +14,10 @@ enum VitalHaptics {
     static let alarmMinutesKey = "vital.alarm.minutes"       // minutes after midnight
     static let windDownEnabledKey = "vital.winddown.enabled"
     static let windDownMinutesKey = "vital.winddown.minutes" // minutes after midnight, the "in bed by" time
+    /// "simple" (default): hour as single buzzes, pause, one double-buzz per quarter hour.
+    /// "digits": NOOP's encoder (long = tens, short = units, hour then minute).
+    static let clockStyleKey = "vital.haptics.clockStyle"
+    static var clockStyle: String { UserDefaults.standard.string(forKey: clockStyleKey) ?? "simple" }
 
     static func enabled(_ key: String, default def: Bool = true) -> Bool {
         (UserDefaults.standard.object(forKey: key) as? Bool) ?? def
@@ -120,9 +124,34 @@ extension VitalModel {
         }
     }
 
-    /// Double-tap on the strap taps the current time back (NOOP's haptic clock).
+    /// Double-tap on the strap taps the current time back.
     func handleDoubleTap() {
-        guard VitalHaptics.enabled(VitalHaptics.hapticClockKey, default: false) else { return }
-        ble.buzzTimeNow(is24h: false)
+        guard VitalHaptics.enabled(VitalHaptics.hapticClockKey, default: false), live.bonded else { return }
+        if VitalHaptics.clockStyle == "digits" {
+            ble.buzzTimeNow(is24h: false)
+        } else {
+            buzzTimeSimple()
+        }
+    }
+
+    /// Simple haptic clock: N single buzzes for the 12-hour hour (12 for twelve), a long pause, then one
+    /// double-buzz per completed quarter hour (0–3). 4:35 → ·4 singles· pause ·2 doubles·. Nothing to
+    /// decode, and it never relies on telling a long buzz from a short one.
+    func buzzTimeSimple(at date: Date = Date()) {
+        let comps = Calendar.current.dateComponents([.hour, .minute], from: date)
+        let h24 = comps.hour ?? 0
+        let hour12 = h24 % 12 == 0 ? 12 : h24 % 12
+        let quarters = (comps.minute ?? 0) / 15
+        var t = 0
+        for _ in 0..<hour12 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(t)) { [weak self] in self?.buzz(loops: 1) }
+            t += 800
+        }
+        t += 1200
+        for _ in 0..<quarters {
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(t)) { [weak self] in self?.buzz(loops: 2) }
+            t += 1300
+        }
+        live.append(log: "Haptic clock (simple): \(hour12) hour buzz(es) + \(quarters) quarter double-buzz(es)")
     }
 }
