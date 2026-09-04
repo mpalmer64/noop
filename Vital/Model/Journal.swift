@@ -57,11 +57,17 @@ enum VitalJournal {
 
 @MainActor
 extension VitalModel {
-    func journalEntries() async -> [JournalEntry] { await repo.journalEntries(days: 400) }
+    /// Native answers plus the imported WHOOP journal (Repository keeps them apart; insights want both).
+    func journalEntries() async -> [JournalEntry] {
+        let native = await repo.journalEntries(days: 800)
+        let imported = await repo.importedJournalEntries(days: 800)
+        var seen = Set<String>()
+        return (native + imported).filter { seen.insert($0.day + "|" + $0.question).inserted }
+    }
 
     /// Answers already logged for a day, keyed by question.
     func journalAnswers(day: String) async -> [String: Bool] {
-        let all = await repo.journalEntries(days: 400)
+        let all = await journalEntries()
         var out: [String: Bool] = [:]
         for e in all where e.day == day { out[e.question] = e.answeredYes }
         return out

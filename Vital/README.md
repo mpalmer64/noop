@@ -30,6 +30,21 @@ Vital/
 VitalWidgets/ WidgetKit extension (small/medium/lock-screen), reads VitalSnapshot
 ```
 
+## Features (as of 2026-09-04)
+
+- **Now** live BPM (median-smoothed), battery, link state, today's HR trace, day strain, sync state.
+- **Today** recovery / strain / sleep rings, strain coach band, HRV / RHR / respiration / SpO₂ / skin temp
+  (model-aware for 5.0/MG), health monitor vs your own 30-night baseline, last night, journal.
+- **Sleep** sleep coach (need, debt, bedtime), last night with hypnogram (on-device nights), overnight HR,
+  14-night bars.
+- **Activity** start a session (live zones, strain, kcal, pause/resume), log a past one from banked HR,
+  detected sessions from NOOP's engine, detail with zones + HR trace.
+- **Trends** 7/30/90-day recovery, HRV, RHR, strain, sleep with period deltas.
+- **Friends** leaderboard via `vital://` share links (no server); choose what you share.
+- **Strap haptics** move reminder, zone coaching, activity start/stop, morning recovery, strain target,
+  double-tap haptic clock, strap alarm, wind-down reminder.
+- **Widgets** small / medium / lock-screen; morning recovery notification; imperial units by default.
+
 ## Data flow
 
 - **Live**: `LiveState.heartRate` → median-smoothed `VitalModel.bpm` (port of `AppModel.ingestHR`). The
