@@ -9,6 +9,8 @@ struct TodayScreen: View {
     @ObservedObject private var live: LiveState
     /// Debug: `VITAL_TAB=friends` pushes the leaderboard from Today (a read, so a push, never a sheet).
     @State private var friendsPushed = ProcessInfo.processInfo.environment["VITAL_TAB"] == "friends"
+    /// Debug: `VITAL_TAB=browse` pushes the all-metrics list from Today.
+    @State private var browsePushed = ProcessInfo.processInfo.environment["VITAL_TAB"] == "browse"
 
     init(live: LiveState) { self.live = live }
 
@@ -52,11 +54,13 @@ struct TodayScreen: View {
                 JournalCard(dayKey: day?.day ?? VitalDay.todayKey())
                 if let day, day.steps != nil || day.activeKcalEst != nil { activityCard(day) }
             }
+            BrowseLinkCard()
             VAsOf(dayKey: day?.day, computedAt: d.computedAt)
                 .padding(.top, VSpace.xs)
         }
         .toolbar { FriendsToolbarButton(); SettingsToolbarButton() }
         .navigationDestination(isPresented: $friendsPushed) { LeaderboardScreen() }
+        .navigationDestination(isPresented: $browsePushed) { BrowseScreen() }
         .refreshable { await model.runScoring(force: false, skipIfUnchanged: true) }
         // One wanter on the model's realtime counter while Today is on screen (Activities holds its own).
         .onAppear { model.startRealtimeHR() }

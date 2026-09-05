@@ -71,7 +71,7 @@ xcrun devicectl device install app --device <UDID> ~/Library/Developer/Xcode/Der
 xcrun devicectl device process launch --terminate-existing --device <UDID> com.maxpalmer.vital
 ```
 
-Headless screenshots on a simulator: `SIMCTL_CHILD_VITAL_TAB=today|sleep|activity|trends|settings xcrun simctl launch …`
+Headless screenshots on a simulator: `SIMCTL_CHILD_VITAL_TAB=today|sleep|activity|trends|friends|browse|settings|journal|settings xcrun simctl launch …`
 preselects a tab (debug-only env var, inert otherwise).
 
 ## Upstream sync
