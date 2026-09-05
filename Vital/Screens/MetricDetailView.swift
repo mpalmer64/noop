@@ -66,6 +66,11 @@ struct MetricDetailView: View {
                 Text(note).font(.caption2).foregroundStyle(VColor.textTertiary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            // Trailing ranges describe history, so siblings show the latest scored day's values.
+            if !d.related.isEmpty {
+                RelatedMetricsCard(ids: d.related, dayKey: range == .day ? dayKey : (model.derived.anchor?.day ?? dayKey))
+            }
+            if !d.about.isEmpty { aboutCard }
         }
         .toolbar { SettingsToolbarButton() }
         .task(id: "\(range.rawValue)|\(dayKey)|\(model.metricCache.version)") { await load() }
@@ -323,6 +328,56 @@ struct MetricDetailView: View {
                 } else if let v = tileValue, let b = d.band(v) {
                     VPill(text: b == .low ? "Low" : (b == .mid ? "Moderate" : "High"), tint: d.color(for: v), filled: true)
                 }
+            }
+        }
+    }
+
+    private var aboutCard: some View {
+        VCard {
+            VStack(alignment: .leading, spacing: VSpace.sm) {
+                VCardHeader(title: "About", subtitle: d.title, tint: d.tint, systemImage: "info.circle")
+                Text(d.about).font(.footnote).foregroundStyle(VColor.textSecondary)
+            }
+        }
+    }
+}
+
+/// Sibling metrics with their latest value; each row pushes that metric on the same day.
+struct RelatedMetricsCard: View {
+    @EnvironmentObject private var model: VitalModel
+    let ids: [MetricID]
+    let dayKey: String
+    @State private var seriesValues: [MetricID: Double] = [:]
+
+    var body: some View {
+        VCard {
+            VStack(alignment: .leading, spacing: VSpace.sm) {
+                VCardHeader(title: "Related", tint: VColor.textSecondary, systemImage: "arrow.triangle.branch")
+                ForEach(ids) { id in
+                    let m = VMetric.descriptor(id)
+                    let row = model.derived.days.first { $0.day == dayKey }
+                    let value = m.tileValue(anchor: row, seriesValue: seriesValues[id])
+                    MetricLink(id: id, dayKey: dayKey) {
+                        HStack(spacing: VSpace.md) {
+                            Image(systemName: m.systemImage).font(.subheadline.weight(.semibold)).foregroundStyle(m.tint).frame(width: 24)
+                            Text(m.title).font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Text(m.unit.format(value)).font(.subheadline.weight(.semibold)).monospacedDigit()
+                                .foregroundStyle(value == nil ? VColor.textTertiary : m.color(for: value))
+                            if !m.unit.label.isEmpty { Text(m.unit.label).font(VFont.caption).foregroundStyle(VColor.textTertiary) }
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(VColor.textTertiary)
+                        }
+                        .padding(.vertical, VSpace.xs)
+                        .contentShape(Rectangle())
+                    }
+                    if id != ids.last { Divider().overlay(VColor.hairline) }
+                }
+            }
+        }
+        .task(id: "\(dayKey)|\(model.metricCache.version)") {
+            for id in ids {
+                let m = VMetric.descriptor(id)
+                if case .series? = m.dailyKey, let v = await model.seriesValue(m, day: dayKey) { seriesValues[id] = v }
             }
         }
     }

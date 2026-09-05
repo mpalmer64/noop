@@ -155,6 +155,10 @@ struct VMetric: Identifiable {
     var note: String? = nil
     /// Where a lower value is the better one (resting HR).
     var lowerIsBetter = false
+    /// Sibling metrics the detail offers at the bottom so the user moves sideways, not back-back-back.
+    var related: [MetricID] { VMetric.relatedMap[id] ?? [] }
+    /// Two or three sentences: what it is and how Vital derives it. Neutral project voice, no medical claims.
+    var about: String { VMetric.aboutMap[id] ?? "" }
 
     /// Ranges the picker offers. Daily-only metrics lead with Week (a one-point Day is not the headline);
     /// intraday metrics lead with Day.
@@ -261,4 +265,36 @@ extension VMetric {
     }
 
     static let all: [VMetric] = MetricID.allCases.map(descriptor)
+
+    static let relatedMap: [MetricID: [MetricID]] = [
+        .recovery: [.hrv, .rhr, .sleepPerformance],
+        .strain: [.hr, .steps, .activeKcal],
+        .hrv: [.recovery, .rhr, .respRate],
+        .rhr: [.recovery, .hrv, .hr],
+        .hr: [.strain, .rhr, .hrv],
+        .sleepPerformance: [.sleepHours, .hr, .respRate],
+        .sleepHours: [.sleepPerformance, .recovery],
+        .spo2: [.respRate, .skinTemp],
+        .skinTemp: [.recovery, .respRate],
+        .respRate: [.recovery, .hrv],
+        .steps: [.strain, .activeKcal],
+        .activeKcal: [.strain, .steps],
+        .battery: [],
+    ]
+
+    static let aboutMap: [MetricID: String] = [
+        .recovery: "Recovery is a 0–100 score of how ready the body looks this morning. Vital takes overnight HRV, resting heart rate, respiratory rate and sleep performance from the strap's offload and compares each with your own recent baseline; the score is computed on this phone by NOOP's engine, the same one NOOP uses.",
+        .strain: "Strain is cardiovascular load on WHOOP's 0–21 scale. Every banked heart-rate sample is weighted by the zone it falls in (relative to your max heart rate), and the weighted time is integrated across the day, so a long easy day and a short hard one can land in the same place.",
+        .hrv: "Heart-rate variability is the beat-to-beat variation in your heart rhythm, reported as RMSSD in milliseconds from the main sleep. Higher than your own baseline usually reads as better recovered; the absolute number varies a lot between people, so the trend matters more than the value.",
+        .rhr: "Resting heart rate is the lowest sustained heart rate during the main sleep, in beats per minute. It is measured directly from the strap's overnight samples; a rise against your baseline is one of the inputs that lowers recovery.",
+        .hr: "Heart rate is the strap's optical reading, about once a second. The Day view averages readings into short buckets so a whole day draws quickly; longer ranges average further. Live readings on Today arrive over Bluetooth while the strap is connected.",
+        .sleepPerformance: "Sleep performance is hours slept as a percentage of the sleep you needed that night. Need is personalised from your recent nights and age; the night's duration comes from the strap's staged sleep, or from the WHOOP export for imported nights.",
+        .sleepHours: "Time asleep for each night, filed under the day the night ended on. Nights staged on this phone come from overnight heart rate and motion; imported nights carry the export's totals.",
+        .spo2: "Blood oxygen is the mean saturation during sleep, from the strap's red and infrared optical channels on a WHOOP 4.0. A 5.0 / MG has no SpO₂ channel, so this stays empty on those straps.",
+        .skinTemp: "Skin temperature from the strap's wrist sensor. Nights staged on this phone are shown as a deviation from your baseline; nights from a WHOOP export are absolute readings, so the two are labelled differently.",
+        .respRate: "Respiratory rate is breaths per minute during sleep. On a 5.0 / MG it is estimated from the timing between heartbeats; on a 4.0 it comes from the strap's respiration track.",
+        .steps: "Daily steps from the strap's step counter (5.0 / MG) or the imported activity file. A 4.0 has no step counter, so days from that strap have no value.",
+        .activeKcal: "Active energy is a whole-day estimate from heart rate alone, using your profile. It does not include resting metabolism and is an approximation, not a measurement.",
+        .battery: "The strap's reported state of charge through the day, as delivered over Bluetooth while connected.",
+    ]
 }
