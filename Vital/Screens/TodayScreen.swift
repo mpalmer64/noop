@@ -155,7 +155,7 @@ struct TodayScreen: View {
                                 .font(.caption2).foregroundStyle(VColor.textTertiary).frame(width: 52, alignment: .trailing)
                             Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(VColor.textTertiary)
                         }
-                        .padding(.vertical, VSpace.xs)
+                        .frame(minHeight: VSpace.rowMinHeight)
                         .contentShape(Rectangle())
                     }
                 }

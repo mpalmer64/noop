@@ -170,7 +170,7 @@ struct TrendsScreen: View {
                 .font(.caption.weight(.semibold)).monospacedDigit()
         }
         .foregroundStyle(tint)
-        .padding(.horizontal, 8).padding(.vertical, 4)
+        .padding(.horizontal, VSpace.sm).padding(.vertical, VSpace.xs)
         .background(tint.opacity(0.14), in: Capsule())
         .accessibilityLabel("Change versus previous \(range.rawValue) days")
     }

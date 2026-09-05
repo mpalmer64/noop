@@ -58,10 +58,10 @@ struct JournalCard: View {
         Button(action: action) {
             Text(text).font(.caption.weight(.semibold))
                 .foregroundStyle(selected ? Color.white : tint)
-                .padding(.horizontal, 14)
+                .padding(.horizontal, VSpace.md)
                 .frame(minHeight: 34)
                 .background(selected ? tint : tint.opacity(0.14), in: Capsule())
-                .padding(.vertical, 5)   // reaches the 44 pt hit target without a taller pill
+                .padding(.vertical, VSpace.chipV)   // reaches the 44 pt hit target without a taller pill
         }
         .buttonStyle(.vPress)
     }

@@ -27,11 +27,11 @@ struct LeaderboardScreen: View {
                 ShareLink(item: me.link() ?? URL(string: "vital://friend")!,
                           subject: Text("My Vital stats"),
                           message: Text(me.summaryText())) {
-                    Label("Share my stats", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity).padding(.vertical, 8)
+                    Label("Share my stats", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity).padding(.vertical, VSpace.sm)
                 }
                 .buttonStyle(.borderedProminent).tint(VColor.hrv)
                 Button { showPaste = true } label: {
-                    Label("Add friend", systemImage: "person.badge.plus").frame(maxWidth: .infinity).padding(.vertical, 8)
+                    Label("Add friend", systemImage: "person.badge.plus").frame(maxWidth: .infinity).padding(.vertical, VSpace.sm)
                 }
                 .buttonStyle(.bordered)
             }
@@ -87,7 +87,7 @@ struct LeaderboardScreen: View {
                             Text(category.format(e.1)).font(VFont.statSmall).monospacedDigit()
                                 .foregroundStyle(category == .recovery || category == .weekRecovery ? VColor.recovery(e.1) : VColor.textPrimary)
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, VSpace.xs)
                         .contextMenu {
                             if e.0.id != me.id { Button("Remove \(e.0.name)", role: .destructive) { friends.remove(e.0) } }
                         }

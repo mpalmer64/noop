@@ -230,21 +230,21 @@ struct NightDetailView: View {
                             Text(lane).font(.caption2).foregroundStyle(VColor.textTertiary).frame(maxHeight: .infinity, alignment: .center)
                         }
                     }
-                    .frame(width: 42)
+                    .frame(width: VSpace.laneLabel)
                     VHypnogram(segments: segments.map { .init(start: $0.start, end: $0.end, stage: $0.stage) },
                                start: night.effectiveStartTs, end: night.endTs)
                 }
                 .frame(height: 130)
                 if motion.count >= 2 {
-                    MotionTrack(values: motion).frame(height: 28).padding(.leading, 42)
-                    Text("Movement").font(VFont.label).foregroundStyle(VColor.textTertiary).padding(.leading, 42)
+                    MotionTrack(values: motion).frame(height: VSpace.motionTrack).padding(.leading, VSpace.laneLabel)
+                    Text("Movement").font(VFont.label).foregroundStyle(VColor.textTertiary).padding(.leading, VSpace.laneLabel)
                 }
                 HStack {
                     Text(VFormat.clock(night.effectiveStartTs))
                     Spacer()
                     Text(VFormat.clock(night.endTs))
                 }
-                .font(.caption2).foregroundStyle(VColor.textTertiary).padding(.leading, 42)
+                .font(.caption2).foregroundStyle(VColor.textTertiary).padding(.leading, VSpace.laneLabel)
             }
         }
     }

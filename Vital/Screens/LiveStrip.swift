@@ -113,21 +113,28 @@ struct LiveBattery: View {
 struct LiveSyncLine: View {
     let state: LiveStripState
     let actions: LiveStripActions
+    private var canSync: Bool { state.connected && state.bonded && !state.backfilling }
+
     var body: some View {
-        HStack(spacing: VSpace.sm) {
-            Image(systemName: "arrow.triangle.2.circlepath").font(.caption2)
-            Text(state.syncText)
-            if state.connected {
-                Text("·")
-                Button("Sync now") { actions.sync() }
-                    .disabled(!state.bonded || state.backfilling)
-                    .foregroundStyle(state.bonded && !state.backfilling ? VColor.hrv : VColor.textTertiary)
-                    .accessibilityHint("Asks the strap to offload now")
+        // The whole line is the control (44 pt tall), not just the two-word caption.
+        Button { actions.sync() } label: {
+            HStack(spacing: VSpace.sm) {
+                Image(systemName: "arrow.triangle.2.circlepath").font(.caption2)
+                Text(state.syncText)
+                if state.connected {
+                    Text("·")
+                    Text("Sync now").foregroundStyle(canSync ? VColor.hrv : VColor.textTertiary)
+                }
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
+            .font(VFont.caption).foregroundStyle(VColor.textTertiary)
+            .frame(minHeight: VSpace.rowMinHeight)
+            .contentShape(Rectangle())
         }
-        .font(VFont.caption).foregroundStyle(VColor.textTertiary)
-        .buttonStyle(.plain)
+        .buttonStyle(.vPress)
+        .disabled(!canSync)
+        .accessibilityLabel(state.syncText)
+        .accessibilityHint(canSync ? "Asks the strap to offload now" : "")
     }
 }
 

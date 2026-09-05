@@ -26,11 +26,11 @@ struct ActivitiesScreen: View {
             } else {
                 HStack(spacing: VSpace.md) {
                     Button { showSportPicker = true } label: {
-                        Label("Start", systemImage: "play.fill").frame(maxWidth: .infinity).padding(.vertical, 10)
+                        Label("Start", systemImage: "play.fill").frame(maxWidth: .infinity).padding(.vertical, VSpace.chipH)
                     }
                     .buttonStyle(.borderedProminent).tint(VColor.strain)
                     Button { showLogSheet = true } label: {
-                        Label("Log past", systemImage: "clock.arrow.circlepath").frame(maxWidth: .infinity).padding(.vertical, 10)
+                        Label("Log past", systemImage: "clock.arrow.circlepath").frame(maxWidth: .infinity).padding(.vertical, VSpace.chipH)
                     }
                     .buttonStyle(.bordered)
                 }
@@ -187,7 +187,7 @@ struct LiveActivityCard: View {
                           tint: a.isPaused ? VColor.textSecondary : VColor.recoveryHigh, filled: !a.isPaused)
                 }
                 Text(elapsedText(a.elapsed(at: now)))
-                    .font(.system(size: 56, weight: .semibold, design: .rounded)).monospacedDigit()
+                    .font(VFont.timer).monospacedDigit()
                     .contentTransition(.numericText())
                 HStack(alignment: .top) {
                     stat("Heart rate", model.bpm.map(String.init) ?? "--", "bpm", zoneColor(live?.currentZone ?? 0))
@@ -206,11 +206,11 @@ struct LiveActivityCard: View {
                         a.isPaused ? model.resumeActivity() : model.pauseActivity()
                     } label: {
                         Label(a.isPaused ? "Resume" : "Pause", systemImage: a.isPaused ? "play.fill" : "pause.fill")
-                            .frame(maxWidth: .infinity).padding(.vertical, 8)
+                            .frame(maxWidth: .infinity).padding(.vertical, VSpace.sm)
                     }
                     .buttonStyle(.bordered)
                     Button(role: .destructive) { confirmEnd = true } label: {
-                        Label("End", systemImage: "stop.fill").frame(maxWidth: .infinity).padding(.vertical, 8)
+                        Label("End", systemImage: "stop.fill").frame(maxWidth: .infinity).padding(.vertical, VSpace.sm)
                     }
                     .buttonStyle(.borderedProminent).tint(VColor.heart)
                 }

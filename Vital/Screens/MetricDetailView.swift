@@ -182,7 +182,7 @@ struct MetricDetailView: View {
             Text((delta >= 0 ? "+" : "−") + d.unit.short(abs(delta))).font(.caption.weight(.semibold)).monospacedDigit()
         }
         .foregroundStyle(tint)
-        .padding(.horizontal, 8).padding(.vertical, 4)
+        .padding(.horizontal, VSpace.sm).padding(.vertical, VSpace.xs)
         .background(tint.opacity(0.14), in: Capsule())
         .accessibilityLabel("Second half of the range versus the first")
     }
@@ -242,7 +242,6 @@ struct MetricDetailView: View {
                 }
             }
         }
-        .sensoryFeedback(.selection, trigger: scrub)
         .chartYAxis {
             AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { v in
                 AxisGridLine().foregroundStyle(VColor.track)
@@ -367,7 +366,7 @@ struct RelatedMetricsCard: View {
                             if !m.unit.label.isEmpty { Text(m.unit.label).font(VFont.caption).foregroundStyle(VColor.textTertiary) }
                             Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(VColor.textTertiary)
                         }
-                        .padding(.vertical, VSpace.xs)
+                        .frame(minHeight: VSpace.rowMinHeight)
                         .contentShape(Rectangle())
                     }
                     if id != ids.last { Divider().overlay(VColor.hairline) }
@@ -428,7 +427,7 @@ struct RecoveryInputsCard: View {
             }
             Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(VColor.textTertiary)
         }
-        .padding(.vertical, 4)
+        .frame(minHeight: VSpace.rowMinHeight)
         .contentShape(Rectangle())
     }
 }
@@ -476,7 +475,7 @@ struct StrainInputsCard: View {
                             Spacer()
                             Text(VFormat.whoopStrain(w.strain)).font(VFont.statSmall).monospacedDigit()
                         }
-                        .padding(.vertical, 2)
+                        .padding(.vertical, VSpace.xxs)
                     }
                 }
             }

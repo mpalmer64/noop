@@ -72,6 +72,10 @@ enum VFont {
     /// Tile numeral.
     static let stat = Font.system(.title2, design: .rounded, weight: .semibold)
     static let statSmall = Font.system(.title3, design: .rounded, weight: .semibold)
+    /// Live-activity elapsed timer numeral (fixed: it sits alone in a card and must not reflow per second).
+    static let timer = Font.system(size: 56, weight: .semibold, design: .rounded)
+    /// Empty-state glyph.
+    static let emptyIcon = Font.system(size: 34, weight: .light)
     static let title = Font.title2.weight(.semibold)
     static let cardTitle = Font.subheadline.weight(.semibold)
     static let body = Font.body
@@ -81,6 +85,7 @@ enum VFont {
 }
 
 enum VSpace {
+    static let xxs: CGFloat = 2
     static let xs: CGFloat = 4
     static let sm: CGFloat = 8
     static let md: CGFloat = 12
@@ -90,6 +95,15 @@ enum VSpace {
     static let cardRadius: CGFloat = 22
     static let tileRadius: CGFloat = 16
     static let screenPadding: CGFloat = 16
+    /// Pill / chip insets (VPill, delta pills, journal answers).
+    static let chipH: CGFloat = 10
+    static let chipV: CGFloat = 5
+    /// Width of the stage-name column beside a hypnogram.
+    static let laneLabel: CGFloat = 42
+    /// Height of the movement track under a hypnogram.
+    static let motionTrack: CGFloat = 28
+    /// Minimum height of a tappable row.
+    static let rowMinHeight: CGFloat = 44
 }
 
 // MARK: - Formatting helpers shared by screens

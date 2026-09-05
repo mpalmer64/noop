@@ -107,7 +107,7 @@ struct VScoreRing: View {
                     .frame(width: size, height: size)
                 VStack(spacing: 0) {
                     Text(value)
-                        .font(.system(size: size * 0.30, weight: .semibold, design: .rounded))
+                        .font(VFont.hero(size * 0.30))
                         .monospacedDigit()
                         .lineLimit(1).minimumScaleFactor(0.6)
                         .foregroundStyle(progress == nil ? VColor.textTertiary : VColor.textPrimary)
@@ -275,7 +275,7 @@ struct VPill: View {
         Text(text)
             .font(.caption.weight(.semibold))
             .foregroundStyle(filled ? Color.white : tint)
-            .padding(.horizontal, 10).padding(.vertical, 5)
+            .padding(.horizontal, VSpace.chipH).padding(.vertical, VSpace.chipV)
             .background(filled ? tint : tint.opacity(0.14), in: Capsule())
     }
 }
@@ -305,7 +305,7 @@ struct VEmpty: View {
     var body: some View {
         VStack(spacing: VSpace.md) {
             Image(systemName: systemImage)
-                .font(.system(size: 34, weight: .light))
+                .font(VFont.emptyIcon)
                 .foregroundStyle(VColor.textTertiary)
             Text(title).font(VFont.cardTitle).foregroundStyle(VColor.textPrimary)
             Text(message).font(.footnote).foregroundStyle(VColor.textSecondary)

@@ -157,7 +157,7 @@ struct SleepScreen: View {
                                     .frame(maxHeight: .infinity, alignment: .center)
                             }
                         }
-                        .frame(width: 42)
+                        .frame(width: VSpace.laneLabel)
                         VHypnogram(segments: segs.map { .init(start: $0.start, end: $0.end, stage: $0.stage) },
                                    start: night.effectiveStartTs, end: night.endTs)
                     }
@@ -167,7 +167,7 @@ struct SleepScreen: View {
                         Spacer()
                         Text(VFormat.clock(night.endTs))
                     }
-                    .font(.caption2).foregroundStyle(VColor.textTertiary).padding(.leading, 42)
+                    .font(.caption2).foregroundStyle(VColor.textTertiary).padding(.leading, VSpace.laneLabel)
                 }
             }
         }

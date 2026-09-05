@@ -65,8 +65,9 @@ struct BrowseScreen: View {
                 Image(systemName: m.systemImage)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(m.tint)
-                    .frame(width: 32, height: 32)
-                    .background(m.tint.opacity(0.14), in: RoundedRectangle(cornerRadius: VSpace.sm, style: .continuous))
+                    .frame(width: VSpace.xxl, height: VSpace.xxl)
+                    // Concentric with the card: 22 − 12 padding = 10.
+                    .background(m.tint.opacity(0.14), in: RoundedRectangle(cornerRadius: VSpace.cardRadius - VSpace.md, style: .continuous))
                 Text(m.title).font(.subheadline.weight(.semibold))
                 Spacer()
                 Text(m.unit.format(v)).font(.subheadline.weight(.semibold)).monospacedDigit()
@@ -74,7 +75,7 @@ struct BrowseScreen: View {
                 if !m.unit.label.isEmpty { Text(m.unit.label).font(VFont.caption).foregroundStyle(VColor.textTertiary) }
                 Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(VColor.textTertiary)
             }
-            .padding(.vertical, VSpace.sm)
+            .frame(minHeight: VSpace.rowMinHeight)
             .contentShape(Rectangle())
         }
     }
