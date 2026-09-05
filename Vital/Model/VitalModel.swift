@@ -251,7 +251,9 @@ final class VitalModel: ObservableObject {
             .max { ($0.endTs - $0.effectiveStartTs) < ($1.endTs - $1.effectiveStartTs) }
 
         let dayStart = Int(Calendar.current.startOfDay(for: now).timeIntervalSince1970)
-        let todayHR = await repo.hrSamples(from: dayStart, to: nowSec, limit: 8000)
+        // Full day at 1 Hz is ~86k rows; the store returns ASC with LIMIT, so a small cap silently reads
+        // only the small hours (asleep → strain 0.0). Same window NOOP's TodayView scores live.
+        let todayHR = await repo.hrSamples(from: dayStart, to: nowSec, limit: 100_000)
         // Live day strain: NOOP's TodayView recipe, verbatim (Tanaka HRmax from age, the anchor day's
         // resting HR, the configured effort method).
         let maxHR = profile.age > 0 ? StrainScorer.tanakaHRmax(age: Double(profile.age)) : nil
@@ -261,7 +263,7 @@ final class VitalModel: ObservableObject {
 
         var nightHR: [HRSample] = []
         if let s = lastNight {
-            nightHR = await repo.hrSamples(from: s.effectiveStartTs, to: s.endTs, limit: 4000)
+            nightHR = await repo.hrSamples(from: s.effectiveStartTs, to: s.endTs, limit: 60_000)
         }
         let recentSessions = await repo.sleepSessions(from: nowSec - 14 * 86_400, to: nowSec, limit: 60)
         let coach = SleepCoach.make(days: days, sessions: recentSessions, age: profile.age)

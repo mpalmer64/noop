@@ -163,7 +163,7 @@ struct NightDetailView: View {
         }
         .toolbar { SettingsToolbarButton() }
         .task(id: "\(night.startTs)|\(model.metricCache.version)") {
-            hr = await model.repo.hrSamples(from: night.effectiveStartTs, to: night.endTs, limit: 4000)
+            hr = await model.repo.hrSamples(from: night.effectiveStartTs, to: night.endTs, limit: 60_000)
             motion = (await model.repo.sessionMotions(sessions: [night]))[night.startTs] ?? []
             restScore = isNap ? nil : await model.seriesValue(.descriptor(.sleepPerformance), day: wakeKey)
             loaded = true
