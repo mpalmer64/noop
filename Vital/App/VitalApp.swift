@@ -1,4 +1,5 @@
 import SwiftUI
+import WhoopStore
 
 @main
 struct VitalApp: App {
@@ -29,6 +30,10 @@ struct VitalRootView: View {
     @State private var showSettings = ProcessInfo.processInfo.environment["VITAL_TAB"] == "settings"
     @State private var showFriends = ProcessInfo.processInfo.environment["VITAL_TAB"] == "friends"
     @State private var showJournal = ProcessInfo.processInfo.environment["VITAL_TAB"] == "journal"
+    /// Debug affordance, same spirit as `VITAL_TAB`: `VITAL_DETAIL=recovery|hr|…|nights|night` opens a
+    /// drill-down screen directly so a headless run can screenshot it. Inert in normal use.
+    @State private var debugDetail: DebugKey? = ProcessInfo.processInfo.environment["VITAL_DETAIL"].map(DebugKey.init)
+    struct DebugKey: Identifiable { let id: String }
 
     enum Tab: String { case now, today, sleep, activity, trends }
 
@@ -49,6 +54,23 @@ struct VitalRootView: View {
         .sheet(isPresented: $showSettings) { SettingsScreen() }
         .sheet(isPresented: $showFriends) { NavigationStack { LeaderboardScreen() } }
         .sheet(isPresented: $showJournal) { JournalInsightsSheet() }
+        .sheet(item: $debugDetail) { key in NavigationStack { debugDetailView(key.id) } }
+    }
+
+    @ViewBuilder
+    private func debugDetailView(_ key: String) -> some View {
+        let parts = key.split(separator: "@").map(String.init)
+        let name = parts.first ?? key
+        let range = parts.count > 1 ? TimeRange(rawValue: parts[1]) : nil
+        if name == "nights" {
+            NightsListScreen()
+        } else if name == "night" {
+            LatestNightDebugView()
+        } else if let id = MetricID(rawValue: name) {
+            DebugMetricView(id: id, range: range)
+        } else {
+            Text("Unknown VITAL_DETAIL \(key)")
+        }
     }
 }
 
@@ -63,6 +85,32 @@ enum VitalAppearance: String, CaseIterable, Identifiable {
         case .dark: return .dark
         case .light: return .light
         case .system: return nil
+        }
+    }
+}
+
+/// Debug-only: the most recent night on record (the seed export has no "last 24 h" night).
+private struct LatestNightDebugView: View {
+    @EnvironmentObject private var model: VitalModel
+    @State private var night: CachedSleepSession?
+    var body: some View {
+        Group {
+            if let night { NightDetailView(night: night) } else { ProgressView() }
+        }
+        .task { night = await model.repo.allSleepSessions(days: 4000).last }
+    }
+}
+
+/// Debug-only: waits for the first scoring pass so the anchor day exists, then opens the metric on it.
+private struct DebugMetricView: View {
+    @EnvironmentObject private var model: VitalModel
+    let id: MetricID
+    let range: TimeRange?
+    var body: some View {
+        if let anchor = model.derived.anchor?.day {
+            MetricDetailView(id: id, dayKey: range == nil ? anchor : nil, initialRange: range)
+        } else {
+            ProgressView()
         }
     }
 }

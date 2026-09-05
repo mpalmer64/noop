@@ -24,7 +24,7 @@ struct TodayScreen: View {
                 vitalsGrid
                 if let h = d.health { healthCard(h) }
                 sleepCard
-                JournalCard(dayKey: day?.day ?? Repository.localDayKey(Date()))
+                JournalCard(dayKey: day?.day ?? VitalDay.todayKey())
                 if let day, day.steps != nil || day.activeKcalEst != nil { activityCard(day) }
             }
             VAsOf(dayKey: day?.day, computedAt: d.computedAt)
@@ -111,14 +111,20 @@ struct TodayScreen: View {
                     }
                 }
                 HStack(alignment: .top) {
-                    VScoreRing(title: "Recovery", value: VFormat.int(day?.recovery), unit: "%",
-                               progress: day?.recovery.map { $0 / 100 }, tint: VColor.recovery(day?.recovery))
+                    MetricLink(id: .recovery, dayKey: day?.day) {
+                        VScoreRing(title: "Recovery", value: VFormat.int(day?.recovery), unit: "%",
+                                   progress: day?.recovery.map { $0 / 100 }, tint: VColor.recovery(day?.recovery))
+                    }
                     Spacer()
-                    VScoreRing(title: "Strain", value: VFormat.whoopStrain(strainToShow), unit: "of 21",
-                               progress: strainToShow.map { min(1, $0 / 100) }, tint: VColor.strain)
+                    MetricLink(id: .strain, dayKey: day?.day) {
+                        VScoreRing(title: "Strain", value: VFormat.whoopStrain(strainToShow), unit: "of 21",
+                                   progress: strainToShow.map { min(1, $0 / 100) }, tint: VColor.strain)
+                    }
                     Spacer()
-                    VScoreRing(title: "Sleep", value: VFormat.int(d.restScore), unit: "%",
-                               progress: d.restScore.map { $0 / 100 }, tint: VColor.sleep)
+                    MetricLink(id: .sleepPerformance, dayKey: day?.day) {
+                        VScoreRing(title: "Sleep", value: VFormat.int(d.restScore), unit: "%",
+                                   progress: d.restScore.map { $0 / 100 }, tint: VColor.sleep)
+                    }
                 }
                 if let r = day?.recovery {
                     Text(recoveryLine(r))
@@ -144,28 +150,34 @@ struct TodayScreen: View {
         let rhrSpark = d.days.suffix(14).compactMap(\.restingHr).map(Double.init)
         return VStack(spacing: VSpace.md) {
             HStack(spacing: VSpace.md) {
-                VStatTile(title: "HRV", value: VFormat.int(day?.avgHrv), unit: "ms",
-                          tint: VColor.hrv, systemImage: "waveform.path",
-                          footnote: "Overnight RMSSD", spark: hrvSpark.count >= 2 ? hrvSpark : nil)
-                VStatTile(title: "Resting HR", value: VFormat.int(day?.restingHr), unit: "bpm",
-                          tint: VColor.rhr, systemImage: "heart.fill",
-                          footnote: "Lowest sustained overnight", spark: rhrSpark.count >= 2 ? rhrSpark : nil)
+                MetricLink(id: .hrv, dayKey: day?.day) {
+                    VStatTile(title: "HRV", value: VFormat.int(day?.avgHrv), unit: "ms",
+                              tint: VColor.hrv, systemImage: "waveform.path",
+                              footnote: "Overnight RMSSD", spark: hrvSpark.count >= 2 ? hrvSpark : nil)
+                }
+                MetricLink(id: .rhr, dayKey: day?.day) {
+                    VStatTile(title: "Resting HR", value: VFormat.int(day?.restingHr), unit: "bpm",
+                              tint: VColor.rhr, systemImage: "heart.fill",
+                              footnote: "Lowest sustained overnight", spark: rhrSpark.count >= 2 ? rhrSpark : nil)
+                }
             }
             HStack(spacing: VSpace.md) {
-                respirationTile
-                spo2Tile
+                MetricLink(id: .respRate, dayKey: day?.day) { respirationTile }
+                MetricLink(id: .spo2, dayKey: day?.day) { spo2Tile }
             }
             if let t = day?.skinTempDevC {
                 // On-device rows store a deviation from baseline; a WHOOP export row stores the absolute
                 // reading (WhoopImporter notes this). Anything above 20 cannot be a deviation.
-                if t > 20 {
-                    VStatTile(title: "Skin temp", value: VitalUnits.temperature(celsius: t),
-                              tint: VColor.temperature, systemImage: "thermometer.medium",
-                              footnote: "Absolute reading from the WHOOP export")
-                } else {
-                    VStatTile(title: "Skin temp", value: VitalUnits.temperatureDelta(celsius: t), unit: "vs baseline",
-                              tint: VColor.temperature, systemImage: "thermometer.medium",
-                              footnote: abs(t) < 0.3 ? "Within your normal range" : "Outside your normal range")
+                MetricLink(id: .skinTemp, dayKey: day?.day) {
+                    if t > 20 {
+                        VStatTile(title: "Skin temp", value: VitalUnits.temperature(celsius: t),
+                                  tint: VColor.temperature, systemImage: "thermometer.medium",
+                                  footnote: "Absolute reading from the WHOOP export")
+                    } else {
+                        VStatTile(title: "Skin temp", value: VitalUnits.temperatureDelta(celsius: t), unit: "vs baseline",
+                                  tint: VColor.temperature, systemImage: "thermometer.medium",
+                                  footnote: abs(t) < 0.3 ? "Within your normal range" : "Outside your normal range")
+                    }
                 }
             }
         }
@@ -225,7 +237,9 @@ struct TodayScreen: View {
 
     private func activityCard(_ day: DailyMetric) -> some View {
         HStack(spacing: VSpace.md) {
-            VStatTile(title: "Steps", value: VFormat.int(day.steps), tint: VColor.strain, systemImage: "figure.walk")
+            MetricLink(id: .steps, dayKey: day.day) {
+                VStatTile(title: "Steps", value: VFormat.int(day.steps), tint: VColor.strain, systemImage: "figure.walk")
+            }
             VStatTile(title: "Active energy", value: VFormat.int(day.activeKcalEst), unit: "kcal",
                       tint: VColor.rhr, systemImage: "flame")
         }

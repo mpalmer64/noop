@@ -34,15 +34,23 @@ struct TrendsScreen: View {
                            message: "Trends fill in as days are scored or imported.")
                 }
             } else {
-                trendCard("Recovery", unit: "%", tint: VColor.recoveryHigh, domain: 0...100,
-                          values: series(\.recovery), colorByBand: true)
-                trendCard("HRV", unit: "ms", tint: VColor.hrv, values: series(\.avgHrv))
-                trendCard("Resting heart rate", unit: "bpm", tint: VColor.rhr,
-                          values: series { $0.restingHr.map(Double.init) })
-                trendCard("Strain", unit: "", tint: VColor.strain, domain: 0...21,
-                          values: series { $0.strain.map { $0 * 21 / 100 } }, decimals: 1)
-                trendCard("Sleep", unit: "h", tint: VColor.sleep,
-                          values: series { $0.totalSleepMin.map { $0 / 60 } }, decimals: 1, bars: true)
+                MetricLink(id: .recovery) {
+                    trendCard("Recovery", unit: "%", tint: VColor.recoveryHigh, domain: 0...100,
+                              values: series(\.recovery), colorByBand: true)
+                }
+                MetricLink(id: .hrv) { trendCard("HRV", unit: "ms", tint: VColor.hrv, values: series(\.avgHrv)) }
+                MetricLink(id: .rhr) {
+                    trendCard("Resting heart rate", unit: "bpm", tint: VColor.rhr,
+                              values: series { $0.restingHr.map(Double.init) })
+                }
+                MetricLink(id: .strain) {
+                    trendCard("Strain", unit: "", tint: VColor.strain, domain: 0...21,
+                              values: series { $0.strain.map { $0 * 21 / 100 } }, decimals: 1)
+                }
+                MetricLink(id: .sleepHours) {
+                    trendCard("Sleep", unit: "h", tint: VColor.sleep,
+                              values: series { $0.totalSleepMin.map { $0 / 60 } }, decimals: 1, bars: true)
+                }
             }
             VAsOf(dayKey: model.derived.anchor?.day, computedAt: model.derived.computedAt).padding(.top, VSpace.xs)
         }

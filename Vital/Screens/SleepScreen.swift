@@ -15,7 +15,8 @@ struct SleepScreen: View {
         VScreen(title: "Sleep") {
             if let coach = d.sleepCoach { coachCard(coach) }
             if let night {
-                headline(night)
+                NavigationLink { NightDetailView(night: night) } label: { headline(night) }
+                    .buttonStyle(.vPress)
                 timelineCard(night)
                 overnightHRCard
                 nightsCard
@@ -29,6 +30,7 @@ struct SleepScreen: View {
                 }
                 if d.hasHistory { nightsCard }
             }
+            if d.hasHistory { allNightsLink }
             VAsOf(dayKey: d.anchor?.day, computedAt: d.computedAt).padding(.top, VSpace.xs)
         }
         .toolbar { SettingsToolbarButton() }
@@ -210,6 +212,23 @@ struct SleepScreen: View {
                 }
             }
         }
+    }
+
+    /// Every night on record, imported and strap-staged alike.
+    private var allNightsLink: some View {
+        NavigationLink { NightsListScreen() } label: {
+            HStack {
+                Image(systemName: "list.bullet.rectangle").foregroundStyle(VColor.sleep)
+                Text("All nights").font(.subheadline.weight(.semibold))
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(VColor.textTertiary)
+            }
+            .padding(VSpace.lg)
+            .background(VColor.surface, in: RoundedRectangle(cornerRadius: VSpace.cardRadius, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: VSpace.cardRadius, style: .continuous).strokeBorder(VColor.hairline, lineWidth: 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.vPress)
     }
 
     private func stage(_ name: String, _ minutes: Double, _ color: Color) -> some View {

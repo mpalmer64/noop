@@ -90,3 +90,16 @@ NOOP is PolyForm Noncommercial 1.0.0 (Required Notice: Copyright 2026 NoopApp). 
 non-commercial build; it may be shared privately with the notices intact and may never be sold or put on an
 app store. See `LICENSE`, `NOTICE`, `DISCLAIMER.md`, `ATTRIBUTION.md` at the repo root and the in-app
 "Licence & attribution" screen.
+
+## Drill-down and nights
+
+Every tile is a `MetricLink` into one `MetricDetailView`, driven by a `VMetric` descriptor
+(`Vital/Data/MetricDescriptor.swift`). Ranges: Day (date-anchored, navigable) and Week / Month / 6M
+(trailing windows ending today). Day windows and wake-day attribution resolve through `VitalDay`
+(`Vital/Data/DayWindow.swift`), the same convention the engine scores with. Series are cached per
+(metric, range, anchor) in `MetricCache` and cleared on the post-offload / scoring / import triggers.
+The Sleep tab lists every night (`NightsListScreen`) and opens `NightDetailView`, which renders a
+hypnogram + motion for strap-staged nights and a summary-only layout for imported ones.
+
+Debug: `VITAL_DETAIL=recovery|hr|…|nights|night` (optionally `metric@week`) opens a screen headlessly.
+Tests: `xcodebuild test -scheme Vital -destination 'platform=iOS Simulator,name=iPhone 17 Pro'`.

@@ -15,13 +15,17 @@ struct NowScreen: View {
         VScreen(title: "Now") {
             heroCard
             HStack(spacing: VSpace.md) {
-                VStatTile(title: "Day strain", value: VFormat.whoopStrain(model.derived.liveStrain),
-                          tint: VColor.strain, systemImage: "flame.fill",
-                          footnote: model.derived.liveStrain == nil ? "Accrues from today's banked HR" : "So far today")
-                VStatTile(title: "Battery", value: live.batteryPct.map { "\(Int($0.rounded()))" } ?? "--",
-                          unit: live.batteryPct == nil ? nil : "%",
-                          tint: batteryTint, systemImage: live.charging == true ? "bolt.fill" : "battery.75percent",
-                          footnote: live.charging == true ? "Charging" : nil)
+                MetricLink(id: .strain, dayKey: VitalDay.todayKey()) {
+                    VStatTile(title: "Day strain", value: VFormat.whoopStrain(model.derived.liveStrain),
+                              tint: VColor.strain, systemImage: "flame.fill",
+                              footnote: model.derived.liveStrain == nil ? "Accrues from today's banked HR" : "So far today")
+                }
+                MetricLink(id: .battery) {
+                    VStatTile(title: "Battery", value: live.batteryPct.map { "\(Int($0.rounded()))" } ?? "--",
+                              unit: live.batteryPct == nil ? nil : "%",
+                              tint: batteryTint, systemImage: live.charging == true ? "bolt.fill" : "battery.75percent",
+                              footnote: live.charging == true ? "Charging" : nil)
+                }
             }
             todayHRCard
             syncCard

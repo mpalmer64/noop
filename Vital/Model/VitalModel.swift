@@ -41,6 +41,8 @@ final class VitalModel: ObservableObject {
     /// Strain coach target for the anchor day (see Coach.swift); nil until a recovery exists.
     var strainCoach: StrainCoach? { StrainCoach(recovery: derived.anchor?.recovery) }
     var lastCoachZone = -1
+    /// Drill-down series cache (Vital/Data/MetricLoader.swift). Cleared wherever stored data changes.
+    let metricCache = MetricCache()
 
     var isWhoop5: Bool { ble.isWhoop5 }
 
@@ -141,6 +143,7 @@ final class VitalModel: ObservableObject {
 
     private func refreshAfterSync() async {
         await repo.refresh(days: 120)
+        metricCache.invalidate()
         await runScoring(force: false, skipIfUnchanged: true)
     }
 
@@ -156,6 +159,7 @@ final class VitalModel: ObservableObject {
             await self.intelligence.analyzeRecent(force: force, skipIfUnchanged: skipIfUnchanged)
         }
         await repo.refresh()
+        metricCache.invalidate()
         await recomputeDerived()
     }
 
@@ -324,6 +328,7 @@ final class VitalModel: ObservableObject {
             let summary = try await WhoopImporter.importExport(url: url, into: store, deviceId: Self.deviceId)
             try? await store.checkpointWAL()
             await repo.refresh()
+            metricCache.invalidate()
             await recomputeDerived()
             importStatus = .done(cycles: summary.countsByCategory["cycles"] ?? 0,
                                  sleeps: summary.countsByCategory["sleeps"] ?? 0,
