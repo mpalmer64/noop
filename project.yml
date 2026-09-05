@@ -672,6 +672,7 @@ targets:
       - VitalTests
     dependencies:
       - target: Vital
+      - package: WhoopProtocol
       - package: WhoopStore
       - package: StrandAnalytics
     settings:

@@ -46,7 +46,8 @@ struct SettingsScreen: View {
             if let fw = model.live.strapFirmware { LabeledContent("Firmware", value: fw) }
             if let v = model.live.whoop5Variant { LabeledContent("Model", value: v) }
             if let pct = model.live.batteryPct { LabeledContent("Battery", value: "\(Int(pct.rounded()))%") }
-            LabeledContent("Last offload", value: VFormat.relative(model.sync.lastSyncedAt))
+            LabeledContent("Last offload", value: model.sync.backfilling ? "Offloading… \(model.sync.chunksThisSession) chunks" : VFormat.relative(model.sync.lastSyncedAt))
+            Button("Sync now") { model.syncNow() }.disabled(!model.live.bonded || model.sync.backfilling)
             if model.live.connected {
                 Button("Disconnect", role: .destructive) { model.disconnect() }
             } else {
@@ -54,7 +55,7 @@ struct SettingsScreen: View {
                 Button("Connect WHOOP 5.0 / MG") { model.connect(.whoop5mg) }
             }
         } header: { Text("Strap") } footer: {
-            Text("Only one app can hold the strap over Bluetooth. Disconnect it in NOOP before connecting here.")
+            Text("Only one app can hold the strap over Bluetooth. Disconnect it in NOOP before connecting here. HRV, sleep, strain and respiration come from history the strap offloads on connection, then get scored on this phone; only heart rate and battery are live. \"Sync now\" on Today asks for an offload immediately.")
         }
     }
 

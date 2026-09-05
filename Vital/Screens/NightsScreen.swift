@@ -322,7 +322,7 @@ struct NightDetailView: View {
     }
 
     private var overnightHRCard: some View {
-        let series = NowScreen.bucket(hr, seconds: 300)
+        let series = MetricSeriesBuilder.bucketMeans(hr, seconds: 300)
         return VCard {
             VStack(alignment: .leading, spacing: VSpace.md) {
                 VCardHeader(title: "Overnight heart rate", subtitle: hr.isEmpty ? nil : "\(hr.count) samples", tint: VColor.heart, systemImage: "heart.fill")

@@ -1,5 +1,6 @@
 import Foundation
 import StrandAnalytics
+import WhoopProtocol
 import StrandDesign
 import WhoopStore
 
@@ -85,6 +86,19 @@ enum MetricSeriesBuilder {
             sums[k] = (cur.sum + p.value, cur.n + 1)
         }
         return sums.keys.sorted().map { k in VPoint(ts: first.ts + k * width, value: sums[k]!.sum / Double(sums[k]!.n)) }
+    }
+
+    /// Mean bpm per fixed window of raw samples, dropping empty windows so a sparkline stays continuous.
+    /// (Was `NowScreen.bucket`; shared by the Today HR card, Sleep, Nights and Activities.)
+    static func bucketMeans(_ samples: [HRSample], seconds: Int) -> [Double] {
+        guard let first = samples.first?.ts, seconds > 0 else { return [] }
+        var sums: [Int: (sum: Double, n: Int)] = [:]
+        for s in samples {
+            let k = (s.ts - first) / seconds
+            let cur = sums[k] ?? (0, 0)
+            sums[k] = (cur.sum + Double(s.bpm), cur.n + 1)
+        }
+        return sums.keys.sorted().map { sums[$0]!.sum / Double(sums[$0]!.n) }
     }
 
     /// Bucket width for HR over a trailing window: hourly for a week, six-hourly for a month, daily for six

@@ -21,7 +21,7 @@ Rules: nothing under `Packages/`, `Strand/`, `StrandiOS*` is edited. The only sh
 Vital/
   App/        VitalApp (@main), VitalRootView (tabs), VitalAppearance
   Model/      VitalModel — the only object views talk to (live / sync / derived channels), VitalNotifications
-  Screens/    NowScreen, TodayScreen, SleepScreen, TrendsScreen, SettingsScreen
+  Screens/    TodayScreen (+ LiveStrip), SleepScreen, ActivitiesScreen, TrendsScreen, SettingsScreen
   Design/     VColor / VFont / VSpace / VFormat tokens; VCard, VRing, VScoreRing, VStatTile, VSparkline, VHypnogram…
   Shared/     VitalSnapshot — App Group glance, compiled into the app and the widget
   Compat/     UpstreamShims.swift
@@ -71,7 +71,7 @@ xcrun devicectl device install app --device <UDID> ~/Library/Developer/Xcode/Der
 xcrun devicectl device process launch --terminate-existing --device <UDID> com.maxpalmer.vital
 ```
 
-Headless screenshots on a simulator: `SIMCTL_CHILD_VITAL_TAB=today|sleep|trends|settings xcrun simctl launch …`
+Headless screenshots on a simulator: `SIMCTL_CHILD_VITAL_TAB=today|sleep|activity|trends|settings xcrun simctl launch …`
 preselects a tab (debug-only env var, inert otherwise).
 
 ## Upstream sync

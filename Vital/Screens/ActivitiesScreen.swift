@@ -418,7 +418,7 @@ struct ActivityDetailSheet: View {
                         VCard {
                             VStack(alignment: .leading, spacing: VSpace.md) {
                                 VCardHeader(title: "Heart rate", subtitle: "\(hr.count) samples", tint: VColor.heart, systemImage: "waveform.path.ecg")
-                                VSparkline(values: NowScreen.bucket(hr, seconds: max(30, (row.endTs - row.startTs) / 120)), tint: VColor.heart)
+                                VSparkline(values: MetricSeriesBuilder.bucketMeans(hr, seconds: max(30, (row.endTs - row.startTs) / 120)), tint: VColor.heart)
                                     .frame(height: 120)
                             }
                         }

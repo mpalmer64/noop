@@ -24,9 +24,10 @@ struct VitalApp: App {
 
 struct VitalRootView: View {
     @EnvironmentObject private var model: VitalModel
-    /// Debug affordance: `VITAL_TAB=today|sleep|trends` in the launch environment preselects a tab so a
-    /// headless simulator run can screenshot every screen. Inert in normal use.
-    @State private var tab: Tab = Tab(rawValue: ProcessInfo.processInfo.environment["VITAL_TAB"] ?? "") ?? .now
+    @Environment(\.scenePhase) private var scenePhase
+    /// Debug affordance: `VITAL_TAB=today|sleep|activity|trends` in the launch environment preselects a tab so a
+    /// headless simulator run can screenshot every screen. `now` (the retired tab) maps to `today`. Inert in normal use.
+    @State private var tab: Tab = Tab.fromEnvironment(ProcessInfo.processInfo.environment["VITAL_TAB"])
     @State private var showSettings = ProcessInfo.processInfo.environment["VITAL_TAB"] == "settings"
     @State private var showFriends = ProcessInfo.processInfo.environment["VITAL_TAB"] == "friends"
     @State private var showJournal = ProcessInfo.processInfo.environment["VITAL_TAB"] == "journal"
@@ -35,13 +36,17 @@ struct VitalRootView: View {
     @State private var debugDetail: DebugKey? = ProcessInfo.processInfo.environment["VITAL_DETAIL"].map(DebugKey.init)
     struct DebugKey: Identifiable { let id: String }
 
-    enum Tab: String { case now, today, sleep, activity, trends }
+    enum Tab: String {
+        case today, sleep, activity, trends
+        static func fromEnvironment(_ raw: String?) -> Tab {
+            guard let raw else { return .today }
+            return raw == "now" ? .today : (Tab(rawValue: raw) ?? .today)
+        }
+    }
 
     var body: some View {
         TabView(selection: $tab) {
-            NavigationStack { NowScreen(live: model.live) }
-                .tabItem { Label("Now", systemImage: "heart.fill") }.tag(Tab.now)
-            NavigationStack { TodayScreen() }
+            NavigationStack { TodayScreen(live: model.live) }
                 .tabItem { Label("Today", systemImage: "circle.circle") }.tag(Tab.today)
             NavigationStack { SleepScreen() }
                 .tabItem { Label("Sleep", systemImage: "moon.zzz.fill") }.tag(Tab.sleep)
@@ -51,6 +56,10 @@ struct VitalRootView: View {
                 .tabItem { Label("Trends", systemImage: "chart.xyaxis.line") }.tag(Tab.trends)
         }
         .tint(VColor.textPrimary)
+        // App-level, not per-tab: re-arm the live feed and refresh derived state whenever we come back.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { model.appBecameActive() }
+        }
         .sheet(isPresented: $showSettings) { SettingsScreen() }
         .sheet(isPresented: $showFriends) { NavigationStack { LeaderboardScreen() } }
         .sheet(isPresented: $showJournal) { JournalInsightsSheet() }

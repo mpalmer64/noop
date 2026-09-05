@@ -1,16 +1,36 @@
 import SwiftUI
+import WhoopProtocol
 import WhoopStore
 
 /// Scored day: recovery, strain, sleep performance, and the vitals behind them. Everything here is
 /// derived from offloaded history and carries the day it describes.
 struct TodayScreen: View {
     @EnvironmentObject private var model: VitalModel
+    @ObservedObject private var live: LiveState
+
+    init(live: LiveState) { self.live = live }
 
     private var d: VitalDerived { model.derived }
     private var day: DailyMetric? { d.anchor }
 
+    /// The live strip's inputs, gathered from the model (smoothed bpm, sync) and the BLE state.
+    private var stripState: LiveStripState {
+        LiveStripState(bpm: model.bpm,
+                       connected: live.connected,
+                       bonded: live.bonded,
+                       backfilling: live.backfilling,
+                       batteryPct: live.batteryPct,
+                       charging: live.charging == true,
+                       modelLabel: live.connected ? (live.whoop5Variant ?? (model.isWhoop5 ? "WHOOP 5.0" : "WHOOP 4.0")) : nil,
+                       lastSynced: model.sync.lastSyncedAt,
+                       hint: live.pairingHint ?? live.reconnectGuide,
+                       error: live.lastSyncError)
+    }
+
     var body: some View {
         VScreen(title: "Today") {
+            LiveStrip(state: stripState,
+                      actions: LiveStripActions(connect: { model.connect($0) }, sync: { model.syncNow() }))
             if !d.hasHistory && !model.isScoring {
                 VCard {
                     VEmpty(systemImage: "sparkles",
@@ -22,6 +42,7 @@ struct TodayScreen: View {
                 ringsCard
                 if let coach = model.strainCoach { strainCoachCard(coach) }
                 vitalsGrid
+                todayHRCard
                 if let h = d.health { healthCard(h) }
                 sleepCard
                 JournalCard(dayKey: day?.day ?? VitalDay.todayKey())
@@ -32,6 +53,45 @@ struct TodayScreen: View {
         }
         .toolbar { FriendsToolbarButton(); SettingsToolbarButton() }
         .refreshable { await model.runScoring(force: false, skipIfUnchanged: true) }
+        // One wanter on the model's realtime counter while Today is on screen (Activities holds its own).
+        .onAppear { model.startRealtimeHR() }
+        .onDisappear { model.stopRealtimeHR() }
+    }
+
+    /// Today's banked heart rate so far (10-minute means), pushing the HR Day detail.
+    private var todayHRCard: some View {
+        let hr = d.todayHR
+        let buckets = MetricSeriesBuilder.bucketMeans(hr, seconds: 600)
+        return MetricLink(id: .hr, dayKey: VitalDay.todayKey()) {
+            VCard {
+                VStack(alignment: .leading, spacing: VSpace.md) {
+                    VCardHeader(title: "Heart rate today",
+                                subtitle: buckets.isEmpty ? nil : "\(hr.count) samples",
+                                tint: VColor.heart, systemImage: "waveform.path.ecg")
+                    if buckets.count >= 2 {
+                        VSparkline(values: buckets, tint: VColor.heart, showsLast: true).frame(height: 120)
+                        HStack {
+                            hrStat("Low", hr.map { Double($0.bpm) }.min())
+                            Spacer()
+                            hrStat("Avg", hr.isEmpty ? nil : Double(hr.map(\.bpm).reduce(0, +)) / Double(hr.count))
+                            Spacer()
+                            hrStat("High", hr.map { Double($0.bpm) }.max())
+                        }
+                    } else {
+                        VEmpty(systemImage: "waveform.path.ecg",
+                               title: "No heart rate banked yet today",
+                               message: "The strap buffers HR and offloads it in bursts every 15–20 minutes while connected.")
+                    }
+                }
+            }
+        }
+    }
+
+    private func hrStat(_ label: String, _ v: Double?) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(label).font(VFont.label).foregroundStyle(VColor.textTertiary)
+            Text(VFormat.int(v)).font(VFont.statSmall).monospacedDigit()
+        }
     }
 
     /// WHOOP-style strain coach: where today's accrual sits against the band the recovery earns.

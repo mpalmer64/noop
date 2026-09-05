@@ -1,4 +1,5 @@
 import XCTest
+import WhoopProtocol
 import WhoopStore
 @testable import Vital
 
@@ -124,6 +125,14 @@ final class VitalDrillDownTests: XCTestCase {
         XCTAssertEqual(out.map(\.value).reduce(0, +) / Double(out.count), 70, accuracy: 0.5)
         XCTAssertEqual(out.map(\.ts), out.map(\.ts).sorted())
         XCTAssertEqual(MetricSeriesBuilder.downsample(Array(pts.prefix(50)), target: 100).count, 50, "small series pass through")
+    }
+
+    func testBucketMeansAveragesPerWindowAndSkipsGaps() {
+        let t0 = 1_700_000_000
+        let samples = [HRSample(ts: t0, bpm: 60), HRSample(ts: t0 + 10, bpm: 80),          // window 0 → 70
+                       HRSample(ts: t0 + 130, bpm: 100)]                                     // window 2 → 100 (window 1 empty)
+        XCTAssertEqual(MetricSeriesBuilder.bucketMeans(samples, seconds: 60), [70, 100])
+        XCTAssertEqual(MetricSeriesBuilder.bucketMeans([], seconds: 60), [])
     }
 
     func testHrBucketWidthsKeepWindowsSmall() {
