@@ -29,7 +29,6 @@ struct VitalRootView: View {
     /// headless simulator run can screenshot every screen. `now` (the retired tab) maps to `today`. Inert in normal use.
     @State private var tab: Tab = Tab.fromEnvironment(ProcessInfo.processInfo.environment["VITAL_TAB"])
     @State private var showSettings = ProcessInfo.processInfo.environment["VITAL_TAB"] == "settings"
-    @State private var showFriends = ProcessInfo.processInfo.environment["VITAL_TAB"] == "friends"
     @State private var showJournal = ProcessInfo.processInfo.environment["VITAL_TAB"] == "journal"
     /// Debug affordance, same spirit as `VITAL_TAB`: `VITAL_DETAIL=recovery|hr|…|nights|night` opens a
     /// drill-down screen directly so a headless run can screenshot it. Inert in normal use.
@@ -61,7 +60,6 @@ struct VitalRootView: View {
             if phase == .active { model.appBecameActive() }
         }
         .sheet(isPresented: $showSettings) { SettingsScreen() }
-        .sheet(isPresented: $showFriends) { NavigationStack { LeaderboardScreen() } }
         .sheet(isPresented: $showJournal) { JournalInsightsSheet() }
         .sheet(item: $debugDetail) { key in NavigationStack { debugDetailView(key.id) } }
     }

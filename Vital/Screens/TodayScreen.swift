@@ -7,6 +7,8 @@ import WhoopStore
 struct TodayScreen: View {
     @EnvironmentObject private var model: VitalModel
     @ObservedObject private var live: LiveState
+    /// Debug: `VITAL_TAB=friends` pushes the leaderboard from Today (a read, so a push, never a sheet).
+    @State private var friendsPushed = ProcessInfo.processInfo.environment["VITAL_TAB"] == "friends"
 
     init(live: LiveState) { self.live = live }
 
@@ -54,6 +56,7 @@ struct TodayScreen: View {
                 .padding(.top, VSpace.xs)
         }
         .toolbar { FriendsToolbarButton(); SettingsToolbarButton() }
+        .navigationDestination(isPresented: $friendsPushed) { LeaderboardScreen() }
         .refreshable { await model.runScoring(force: false, skipIfUnchanged: true) }
         // One wanter on the model's realtime counter while Today is on screen (Activities holds its own).
         .onAppear { model.startRealtimeHR() }

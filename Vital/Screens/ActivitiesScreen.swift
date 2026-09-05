@@ -9,7 +9,15 @@ struct ActivitiesScreen: View {
     @EnvironmentObject private var model: VitalModel
     @State private var showSportPicker = false
     @State private var showLogSheet = false
-    @State private var detail: WorkoutRow?
+    @State private var detail: ActivityRoute?
+
+    /// `navigationDestination(item:)` wants Hashable; a row's start + sport + source identifies it.
+    struct ActivityRoute: Identifiable, Hashable {
+        let row: WorkoutRow
+        var id: String { row.id }
+        static func == (a: ActivityRoute, b: ActivityRoute) -> Bool { a.id == b.id }
+        func hash(into h: inout Hasher) { h.combine(id) }
+    }
 
     var body: some View {
         VScreen(title: "Activity") {
@@ -40,8 +48,9 @@ struct ActivitiesScreen: View {
                 ForEach(groupedByDay, id: \.day) { group in
                     VSectionTitle(text: VFormat.dayLabel(group.day))
                     ForEach(group.rows) { row in
-                        Button { detail = row } label: { ActivityRow(row: row) }
+                        Button { detail = ActivityRoute(row: row) } label: { ActivityRow(row: row) }
                             .buttonStyle(.vPress)
+                            .accessibilityHint("Opens this activity")
                     }
                 }
                 Text("Detected activities come from the strap's banked heart rate and motion after each offload; they carry a “Detected” badge.")
@@ -53,7 +62,8 @@ struct ActivitiesScreen: View {
             SportPickerSheet { sport in model.startActivity(sport: sport) }
         }
         .sheet(isPresented: $showLogSheet) { LogActivitySheet() }
-        .sheet(item: $detail) { row in ActivityDetailSheet(row: row) }
+        // Reading, so a push (like Nights); the sport picker and log form stay sheets because they take input.
+        .navigationDestination(item: $detail) { route in ActivityDetailView(row: route.row) }
         .sensoryFeedback(.success, trigger: model.workouts.count) { old, new in new > old }
         .task { await model.reloadWorkouts() }
     }
@@ -366,7 +376,7 @@ struct LogActivitySheet: View {
 
 // MARK: - Detail
 
-struct ActivityDetailSheet: View {
+struct ActivityDetailView: View {
     @EnvironmentObject private var model: VitalModel
     @Environment(\.dismiss) private var dismiss
     let row: WorkoutRow
@@ -374,7 +384,6 @@ struct ActivityDetailSheet: View {
     @State private var confirmDelete = false
 
     var body: some View {
-        NavigationStack {
             ScrollView {
                 VStack(spacing: VSpace.md) {
                     VCard(padding: VSpace.xl) {
@@ -431,10 +440,9 @@ struct ActivityDetailSheet: View {
                 .padding(VSpace.screenPadding)
             }
             .background(VColor.canvas)
-            .navigationTitle("Activity")
+            .navigationTitle(WorkoutSource.displaySport(row.sport))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
                 if WorkoutSource.classify(row.source) == .manual {
                     ToolbarItem(placement: .destructiveAction) {
                         Button(role: .destructive) { confirmDelete = true } label: { Image(systemName: "trash") }
@@ -445,7 +453,6 @@ struct ActivityDetailSheet: View {
                 Button("Delete", role: .destructive) { Task { await model.deleteActivity(row); dismiss() } }
             }
             .task { hr = await model.repo.hrSamples(from: row.startTs, to: row.endTs, limit: 20_000) }
-        }
     }
 
     private var sourceLabel: String {
