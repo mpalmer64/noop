@@ -124,9 +124,17 @@ extension VitalModel {
         }
     }
 
-    /// Double-tap on the strap taps the current time back.
+    /// Double-tap on the strap taps the current time back. Debounced: the strap can deliver the same
+    /// DOUBLE_TAP twice (live event, then again inside the next offload's fresh-gesture window), and two
+    /// overlapping sequences read as random buzzing.
     func handleDoubleTap() {
         guard VitalHaptics.enabled(VitalHaptics.hapticClockKey, default: false), live.bonded else { return }
+        let now = Date()
+        if let last = VitalHapticClock.lastTrigger, now.timeIntervalSince(last) < VitalHapticClock.debounceSeconds {
+            live.append(log: "Haptic clock: double-tap ignored (\(Int(now.timeIntervalSince(last))) s after the last one)")
+            return
+        }
+        VitalHapticClock.lastTrigger = now
         if VitalHaptics.clockStyle == "digits" {
             ble.buzzTimeNow(is24h: false)
         } else {
@@ -134,24 +142,44 @@ extension VitalModel {
         }
     }
 
-    /// Simple haptic clock: N single buzzes for the 12-hour hour (12 for twelve), a long pause, then one
-    /// double-buzz per completed quarter hour (0–3). 4:35 → ·4 singles· pause ·2 doubles·. Nothing to
-    /// decode, and it never relies on telling a long buzz from a short one.
+    /// Simple haptic clock: N single buzzes for the 12-hour hour (12 at twelve), a long pause, then one
+    /// single buzz per completed quarter hour (0–3). 4:35 → four buzzes · pause · two buzzes.
+    ///
+    /// Singles only, widely spaced. On a 5/MG every buzz is the same fixed notify waveform and a "loops"
+    /// count just repeats it back to back, so a double-buzz is felt as one longer buzz and 800 ms spacing
+    /// runs pulses together; the only reliable signal is the count and the pause. Any sequence already
+    /// playing is cancelled first so two never interleave.
     func buzzTimeSimple(at date: Date = Date()) {
+        VitalHapticClock.cancel()
         let comps = Calendar.current.dateComponents([.hour, .minute], from: date)
         let h24 = comps.hour ?? 0
         let hour12 = h24 % 12 == 0 ? 12 : h24 % 12
         let quarters = (comps.minute ?? 0) / 15
         var t = 0
-        for _ in 0..<hour12 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(t)) { [weak self] in self?.buzz(loops: 1) }
-            t += 800
+        func schedule(_ ms: Int) {
+            let item = DispatchWorkItem { [weak self] in self?.buzz(loops: 1) }
+            VitalHapticClock.pending.append(item)
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(ms), execute: item)
         }
-        t += 1200
-        for _ in 0..<quarters {
-            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(t)) { [weak self] in self?.buzz(loops: 2) }
-            t += 1300
-        }
-        live.append(log: "Haptic clock (simple): \(hour12) hour buzz(es) + \(quarters) quarter double-buzz(es)")
+        for _ in 0..<hour12 { schedule(t); t += VitalHapticClock.hourGapMs }
+        t += VitalHapticClock.pauseMs
+        for _ in 0..<quarters { schedule(t); t += VitalHapticClock.quarterGapMs }
+        live.append(log: "Haptic clock (simple): \(hour12) hour buzz(es), pause, \(quarters) quarter buzz(es); \(t / 1000) s total")
+    }
+}
+
+/// Timing and single-flight state for the simple clock. Gaps are wider than the 5/MG notify effect so
+/// each buzz is felt on its own; the pause is long enough to be unmistakable as a separator.
+enum VitalHapticClock {
+    static let hourGapMs = 1600
+    static let pauseMs = 3200
+    static let quarterGapMs = 1600
+    static let debounceSeconds: TimeInterval = 30
+    static var lastTrigger: Date?
+    static var pending: [DispatchWorkItem] = []
+
+    static func cancel() {
+        pending.forEach { $0.cancel() }
+        pending.removeAll()
     }
 }

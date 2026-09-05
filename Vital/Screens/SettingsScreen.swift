@@ -264,7 +264,7 @@ private struct HapticsSection: View {
             }
             Button("Test buzz") { model.buzz(loops: 1) }.disabled(!model.live.bonded)
         } header: { Text("Strap haptics") } footer: {
-            Text("Move reminder uses the strap's motion to spot long sitting. Zone coaching buzzes three times entering zone 5 and once dropping back to zone 1. Simple clock: one buzz per hour (12 at twelve), a pause, then a double-buzz per quarter hour — 4:35 is four singles, pause, two doubles. The alarm runs on the strap itself and fires even if the phone is out of reach; a notification backs it up.")
+            Text("Move reminder uses the strap's motion to spot long sitting. Zone coaching buzzes three times entering zone 5 and once dropping back to zone 1. Simple clock: one buzz per hour (12 at twelve), a long pause, then one buzz per quarter hour — 4:35 is four buzzes, pause, two buzzes. Count them; a second double-tap within 30 seconds is ignored so sequences never overlap. The alarm runs on the strap itself and fires even if the phone is out of reach; a notification backs it up.")
         }
     }
 

@@ -27,6 +27,8 @@ struct MetricDetailView: View {
     @State private var series: MetricSeries = .empty
     @State private var loading = true
     @State private var seriesDayValue: Double?
+    /// Point under the finger while scrubbing the chart; nil when not touching.
+    @State private var scrub: VPoint?
 
     /// `dayKey` non-nil means "open on this day": daily-only metrics land on their Day inputs.
     init(id: MetricID, dayKey: String? = nil, initialRange: TimeRange? = nil) {
@@ -115,11 +117,13 @@ struct MetricDetailView: View {
             VStack(alignment: .leading, spacing: VSpace.md) {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(range == .day ? "Average" : "\(range.label) \(d.aggregation.label)")
-                            .font(VFont.label).foregroundStyle(VColor.textTertiary)
+                        Text(scrub.map(scrubLabel) ?? (range == .day ? "Average" : "\(range.label) \(d.aggregation.label)"))
+                            .font(VFont.label).foregroundStyle(scrub == nil ? VColor.textTertiary : d.tint)
+                            .contentTransition(.numericText())
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            Text(d.unit.format(agg)).font(VFont.display).monospacedDigit()
-                                .foregroundStyle(agg == nil ? VColor.textTertiary : d.color(for: agg))
+                            let shown = scrub?.value ?? agg
+                            Text(d.unit.format(shown)).font(VFont.display).monospacedDigit()
+                                .foregroundStyle(shown == nil ? VColor.textTertiary : d.color(for: shown))
                                 .contentTransition(.numericText())
                             if !d.unit.label.isEmpty { Text(d.unit.label).font(VFont.unit).foregroundStyle(VColor.textTertiary) }
                         }
@@ -130,6 +134,8 @@ struct MetricDetailView: View {
                 }
                 if series.points.count >= 2 {
                     chart.frame(height: 190)
+                    Text(range == .day ? "Touch and drag to read any moment." : "Touch and drag to read any day.")
+                        .font(.caption2).foregroundStyle(VColor.textTertiary)
                     HStack {
                         stat("Low", d.unit.format(values.min()))
                         Spacer()
@@ -205,6 +211,33 @@ struct MetricDetailView: View {
         }
         .chartYScale(domain: lo...hi)
         .chartXScale(domain: xDomain)
+        .chartOverlay { proxy in
+            GeometryReader { geo in
+                Rectangle().fill(.clear).contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { g in
+                                let plot = geo[proxy.plotFrame!]
+                                let x = g.location.x - plot.origin.x
+                                guard let date: Date = proxy.value(atX: x) else { return }
+                                let target = Int(date.timeIntervalSince1970)
+                                let nearest = pts.min { abs($0.ts - target) < abs($1.ts - target) }
+                                if nearest != scrub { scrub = nearest }
+                            }
+                            .onEnded { _ in scrub = nil }
+                    )
+                if let scrub, let plot = Optional(geo[proxy.plotFrame!]), let px = proxy.position(forX: scrub.date) {
+                    Rectangle().fill(d.tint.opacity(0.6)).frame(width: 1, height: plot.height)
+                        .position(x: plot.origin.x + px, y: plot.midY)
+                    if let py = proxy.position(forY: scrub.value) {
+                        Circle().fill(d.tint).frame(width: 10, height: 10)
+                            .overlay(Circle().stroke(VColor.surface, lineWidth: 2))
+                            .position(x: plot.origin.x + px, y: plot.origin.y + py)
+                    }
+                }
+            }
+        }
+        .sensoryFeedback(.selection, trigger: scrub)
         .chartYAxis {
             AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { v in
                 AxisGridLine().foregroundStyle(VColor.track)
@@ -217,6 +250,18 @@ struct MetricDetailView: View {
                 AxisValueLabel(format: xFormat).foregroundStyle(VColor.textTertiary).font(.caption2)
             }
         }
+    }
+
+    /// "6:42 PM" for an intraday point, "Thu, Jul 16" for a daily one.
+    private func scrubLabel(_ p: VPoint) -> String {
+        if range == .day {
+            let end = series.bucketSeconds > 60 ? " – " + VFormat.clock(p.ts + series.bucketSeconds) : ""
+            return VFormat.clock(p.ts) + end
+        }
+        if series.bucketSeconds > 0 && series.bucketSeconds < 86_400 {
+            return p.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day().hour())
+        }
+        return VFormat.dayLabel(VitalDay.key(forTs: p.ts))
     }
 
     private var xDomain: ClosedRange<Date> {
