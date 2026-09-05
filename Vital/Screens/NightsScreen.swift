@@ -155,10 +155,10 @@ struct NightDetailView: View {
     var body: some View {
         VScreen(title: isNap ? "Nap" : "Night") {
             headline
-            if staged { hypnogramCard } else { importedStagesCard }
+            MetricLink(id: .sleepPerformance, dayKey: wakeKey) { if staged { hypnogramCard } else { importedStagesCard } }
             vitalsCard
-            if !isNap { needCard }
-            overnightHRCard
+            if !isNap { MetricLink(id: .sleepHours, dayKey: wakeKey) { needCard } }
+            MetricLink(id: .hr, dayKey: wakeKey) { overnightHRCard }
             provenance
         }
         .toolbar { SettingsToolbarButton() }

@@ -40,7 +40,9 @@ struct TodayScreen: View {
             } else {
                 if let day, !isRecent(day.day) { staleNotice(day.day) }
                 ringsCard
-                if let coach = model.strainCoach { strainCoachCard(coach) }
+                if let coach = model.strainCoach {
+                    MetricLink(id: .strain, dayKey: day?.day) { strainCoachCard(coach) }
+                }
                 vitalsGrid
                 todayHRCard
                 if let h = d.health { healthCard(h) }
@@ -136,15 +138,19 @@ struct TodayScreen: View {
                             subtitle: h.outOfRange == 0 ? "All in your range" : "\(h.outOfRange) outside your range",
                             tint: h.outOfRange == 0 ? VColor.recoveryHigh : VColor.recoveryMid, systemImage: "stethoscope")
                 ForEach(h.items) { item in
-                    HStack {
-                        Circle().fill(item.band == .outOfRange ? VColor.recoveryMid : VColor.recoveryHigh).frame(width: 8, height: 8)
-                        Text(item.title).font(.subheadline)
-                        Spacer()
-                        Text(item.value).font(.subheadline.weight(.semibold)).monospacedDigit()
-                        Text(item.band == .outOfRange ? "outside" : "typical")
-                            .font(.caption2).foregroundStyle(VColor.textTertiary).frame(width: 52, alignment: .trailing)
+                    MetricLink(id: Self.healthMetric(item.id), dayKey: day?.day) {
+                        HStack {
+                            Circle().fill(item.band == .outOfRange ? VColor.recoveryMid : VColor.recoveryHigh).frame(width: VSpace.sm, height: VSpace.sm)
+                            Text(item.title).font(.subheadline)
+                            Spacer()
+                            Text(item.value).font(.subheadline.weight(.semibold)).monospacedDigit()
+                            Text(item.band == .outOfRange ? "outside" : "typical")
+                                .font(.caption2).foregroundStyle(VColor.textTertiary).frame(width: 52, alignment: .trailing)
+                            Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(VColor.textTertiary)
+                        }
+                        .padding(.vertical, VSpace.xs)
+                        .contentShape(Rectangle())
                     }
-                    .padding(.vertical, 2)
                 }
                 Text("Ranges come from your own last 30 nights; not a diagnosis.")
                     .font(.caption2).foregroundStyle(VColor.textTertiary)
@@ -262,7 +268,31 @@ struct TodayScreen: View {
         }
     }
 
+    /// `HealthMonitor.Item.id` → the metric its row opens.
+    static func healthMetric(_ id: String) -> MetricID {
+        switch id {
+        case "rhr": return .rhr
+        case "hrv": return .hrv
+        case "resp": return .respRate
+        case "skin": return .skinTemp
+        case "spo2": return .spo2
+        default: return .recovery
+        }
+    }
+
+    /// Last night pushes the night itself when one is stored; otherwise the sleep-hours history.
+    @ViewBuilder
     private var sleepCard: some View {
+        if let night = d.lastNight {
+            NavigationLink { NightDetailView(night: night) } label: { sleepCardBody }
+                .buttonStyle(.vPress)
+                .accessibilityHint("Opens last night")
+        } else {
+            MetricLink(id: .sleepHours, dayKey: day?.day) { sleepCardBody }
+        }
+    }
+
+    private var sleepCardBody: some View {
         VCard {
             VStack(alignment: .leading, spacing: VSpace.md) {
                 VCardHeader(title: "Last night",
@@ -300,8 +330,10 @@ struct TodayScreen: View {
             MetricLink(id: .steps, dayKey: day.day) {
                 VStatTile(title: "Steps", value: VFormat.int(day.steps), tint: VColor.strain, systemImage: "figure.walk")
             }
-            VStatTile(title: "Active energy", value: VFormat.int(day.activeKcalEst), unit: "kcal",
-                      tint: VColor.rhr, systemImage: "flame")
+            MetricLink(id: .activeKcal, dayKey: day.day) {
+                VStatTile(title: "Active energy", value: VFormat.int(day.activeKcalEst), unit: "kcal",
+                          tint: VColor.rhr, systemImage: "flame")
+            }
         }
     }
 

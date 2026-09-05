@@ -7,18 +7,33 @@ import WhoopStore
 /// overnight heart rate trace.
 struct SleepScreen: View {
     @EnvironmentObject private var model: VitalModel
+    /// Bar the finger is on in the 14-night chart; resolves to a night and pushes it.
+    @State private var pickedDate: Date?
+    @State private var pushedNight: NightRoute?
+    @State private var missingNote: String?
 
     private var d: VitalDerived { model.derived }
     private var night: CachedSleepSession? { d.lastNight }
 
+    /// `navigationDestination(item:)` needs an Identifiable; a session's start is unique.
+    struct NightRoute: Identifiable, Hashable {
+        let session: CachedSleepSession
+        var id: Int { session.startTs }
+        static func == (a: NightRoute, b: NightRoute) -> Bool { a.id == b.id }
+        func hash(into h: inout Hasher) { h.combine(id) }
+    }
+
     var body: some View {
         VScreen(title: "Sleep") {
-            if let coach = d.sleepCoach { coachCard(coach) }
+            if let coach = d.sleepCoach { MetricLink(id: .sleepHours, dayKey: d.anchor?.day) { coachCard(coach) } }
             if let night {
                 NavigationLink { NightDetailView(night: night) } label: { headline(night) }
                     .buttonStyle(.vPress)
-                timelineCard(night)
-                overnightHRCard
+                    .accessibilityHint("Opens last night")
+                NavigationLink { NightDetailView(night: night) } label: { timelineCard(night) }
+                    .buttonStyle(.vPress)
+                    .accessibilityHint("Opens last night's stages")
+                MetricLink(id: .hr, dayKey: VitalDay.wakeDayKey(night)) { overnightHRCard }
                 nightsCard
             } else {
                 VCard {
@@ -34,6 +49,21 @@ struct SleepScreen: View {
             VAsOf(dayKey: d.anchor?.day, computedAt: d.computedAt).padding(.top, VSpace.xs)
         }
         .toolbar { SettingsToolbarButton() }
+        .navigationDestination(item: $pushedNight) { route in NightDetailView(night: route.session) }
+        .onChange(of: pickedDate) { _, date in
+            // A drag reports many selections; resolve one at a time and never re-push over an open detail.
+            guard let date, pushedNight == nil else { return }
+            let key = VitalDay.key(for: date)
+            Task {
+                if let n = await model.night(forWakeDay: key) {
+                    missingNote = nil
+                    pushedNight = NightRoute(session: n)
+                } else {
+                    withAnimation(.easeOut(duration: 0.2)) { missingNote = "No stored night ends on \(VFormat.dayLabel(key))." }
+                }
+                pickedDate = nil
+            }
+        }
     }
 
     // MARK: Cards
@@ -188,6 +218,8 @@ struct SleepScreen: View {
                             .foregroundStyle(VColor.sleep.gradient)
                             .cornerRadius(4)
                     }
+                    // Tap a bar to open that night (chart selection, resolved to the session by wake day).
+                    .chartXSelection(value: $pickedDate)
                     .chartYAxis {
                         AxisMarks(position: .trailing) {
                             AxisGridLine().foregroundStyle(VColor.track)
@@ -200,6 +232,8 @@ struct SleepScreen: View {
                         }
                     }
                     .frame(height: 140)
+                    Text(missingNote ?? "Tap a night to open it.").font(.caption2).foregroundStyle(VColor.textTertiary)
+                        .contentTransition(.opacity)
                     HStack {
                         metric("Average", VFormat.hoursMinutes(rows.compactMap(\.totalSleepMin).reduce(0, +) / Double(rows.count)), nil)
                         Spacer()

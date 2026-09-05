@@ -4,7 +4,7 @@ import WhoopStore
 
 /// Every metric a tile can drill into. Adding one is a new case plus a descriptor below, never a screen.
 enum MetricID: String, CaseIterable, Identifiable, Hashable {
-    case recovery, strain, hrv, rhr, hr, sleepPerformance, sleepHours, spo2, skinTemp, respRate, steps, battery
+    case recovery, strain, hrv, rhr, hr, sleepPerformance, sleepHours, spo2, skinTemp, respRate, steps, activeKcal, battery
     var id: String { rawValue }
 }
 
@@ -32,7 +32,7 @@ enum TimeRange: String, CaseIterable, Identifiable, Hashable {
 
 /// How a value is rendered. Formatting lives with the unit so one descriptor field decides it everywhere.
 enum MetricUnit {
-    case percent, bpm, ms, rpm, hours, count, strain, skinTemp
+    case percent, bpm, ms, rpm, hours, count, kcal, strain, skinTemp
 
     var label: String {
         switch self {
@@ -41,6 +41,7 @@ enum MetricUnit {
         case .ms: return "ms"
         case .rpm: return "rpm"
         case .hours: return "h"
+        case .kcal: return "kcal"
         case .count, .skinTemp: return ""
         case .strain: return "of 21"
         }
@@ -60,7 +61,7 @@ enum MetricUnit {
         case .skinTemp:
             // The stored value is bimodal (WhoopImporter): absolute °C from an export, a deviation on-device.
             return v > 20 ? VitalUnits.temperature(celsius: v) : VitalUnits.temperatureDelta(celsius: v)
-        case .count: return v.rounded().formatted(.number.precision(.fractionLength(0)))
+        case .count, .kcal: return v.rounded().formatted(.number.precision(.fractionLength(0)))
         default: return decimals == 0 ? "\(Int(v.rounded()))" : String(format: "%.\(decimals)f", v)
         }
     }
@@ -246,6 +247,11 @@ extension VMetric {
                                     dailyKey: .column { $0.steps.map(Double.init) }, aggregation: .mean,
                                     band: { _ in nil }, tint: VColor.strain, systemImage: "figure.walk", domain: nil,
                                     bars: true, note: "Daily total from the strap's step counter or the imported activity file.")
+        case .activeKcal:
+            return VMetric(id: id, title: "Active energy", unit: .kcal, intraday: nil,
+                           dailyKey: .column { $0.activeKcalEst }, aggregation: .mean,
+                           band: { _ in nil }, tint: VColor.rhr, systemImage: "flame", domain: nil,
+                           bars: true, note: "Whole-day estimate from heart rate alone; it does not include resting metabolism.")
         case .battery:
             return VMetric(id: id, title: "Battery", unit: .percent, intraday: .battery, dailyKey: nil,
                                     aggregation: .last, band: { _ in nil }, tint: VColor.textSecondary,
